@@ -1,0 +1,18 @@
+@startuml auth_sequence
+!include <C4/C4_Sequence>
+
+title Protected route — JWT authentication
+
+participant "Client" as client
+participant "protected route" as route
+participant "core/auth\nget_current_user" as auth
+participant "AccessTokenVerifier" as verifier
+
+client -> route: request + Bearer token
+route -> auth: CurrentUserDep
+auth -> verifier: decode token
+verifier --> auth: AuthenticatedUser
+auth --> route: actor id and role
+route --> client: 200 or 404 not in scope
+
+@enduml

@@ -1,0 +1,49 @@
+@startuml todo_stack_components
+!pragma layout smetana
+!include <C4/C4_Component>
+
+title Todo stack — module dependencies
+
+Container_Boundary(apiLayer, "api") {
+	Component(router, "router.py", "FastAPI")
+	Component(schemas, "schemas.py", "Pydantic")
+	Component(apiMappers, "mappers.py", "Python")
+}
+
+Container_Boundary(appLayer, "application") {
+	Component(useCases, "users.py / todos.py", "Python")
+	Component(appErrors, "errors.py", "Python")
+}
+
+Container_Boundary(domainLayer, "domain") {
+	Component(entity, "entity.py", "Python")
+	Component(port, "repository.py Protocol", "Python")
+}
+
+Container_Boundary(infraLayer, "infrastructure.persistence") {
+	Component(orm, "orm.py", "SQLAlchemy")
+	Component(adapter, "repository.py", "SqlAlchemyTodoRepository")
+	Component(mapper, "mapper.py", "Python")
+	ComponentDb(db, "database.py", "AsyncSession, get_db")
+}
+
+Container_Boundary(coreLayer, "core") {
+	Component(deps, "dependencies.py", "Depends wiring")
+	Component(excHandlers, "exceptions.py", "HTTP mapping")
+}
+
+Rel(router, useCases, "delegates")
+Rel(router, apiMappers, "maps responses")
+Rel(useCases, port, "uses")
+Rel(useCases, entity, "returns")
+Rel(useCases, appErrors, "raises")
+Rel(excHandlers, appErrors, "maps to HTTP")
+Rel(deps, db, "injects session")
+Rel(deps, adapter, "injects repository")
+Rel(adapter, port, "implements")
+Rel(adapter, mapper, "uses")
+Rel(mapper, orm, "ORM mapping")
+Rel(mapper, entity, "domain mapping")
+Rel(apiMappers, entity, "map at HTTP boundary", $tags="boundary")
+
+@enduml

@@ -1,0 +1,29 @@
+@startuml layer_containers
+!pragma layout smetana
+!include <C4/C4_Container>
+
+title Layer flow — ToDo API (ports and adapters)
+
+Person(client, "Client", "HTTP API consumer")
+
+System_Boundary(todoApi, "ToDo API") {
+	Container(api, "HTTP / api", "FastAPI", "driving adapter (primary)")
+	Container(app, "application", "Python", "use cases")
+	Container(domain, "domain + ports", "Python", "entities and Protocol ports")
+	ContainerDb(persistence, "persistence", "SQLAlchemy + asyncpg", "outbound adapter")
+	Container(authJwt, "auth / JWT", "PyJWT + Argon2", "outbound adapter")
+	Container(core, "core", "FastAPI Depends", "DI, auth extraction, HTTP errors")
+}
+
+Rel(client, api, "HTTPS")
+Rel(api, app, "calls use cases")
+Rel(app, domain, "orchestrates")
+Rel(persistence, domain, "implements port")
+Rel(authJwt, domain, "implements port")
+Rel_L(core, api, "wires")
+Rel_L(core, persistence, "wires")
+Rel_L(core, authJwt, "wires")
+
+SHOW_LEGEND()
+
+@enduml

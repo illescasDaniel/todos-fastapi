@@ -1,0 +1,24 @@
+# App service — production (Path C) and local full-stack base (Path B).
+# Path B: ./scripts/container/up.sh merges docker-compose.infra.yml + docker-compose.app.with-infra.yml
+# Path C: ./scripts/container/deploy.sh uses this file only (external DATABASE_URL / VALKEY_URL)
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: todos-app
+    ports:
+      - "${COMPOSE_APP_BIND:-127.0.0.1}:8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      VALKEY_URL: ${COMPOSE_VALKEY_URL}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped

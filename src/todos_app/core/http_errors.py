@@ -1,0 +1,12 @@
+"""Shared HTTP error detail strings for handlers and route raises."""
+
+TODO_NOT_FOUND = "Todo not found"
+TODO_NOT_FOUND_FOR_ACTOR = "You don't have a todo with this id"
+TODO_OWNER_CHANGE_FORBIDDEN = "Cannot change todo owner"
+USER_NOT_FOUND = "User not found"
+INVALID_CREDENTIALS = "Invalid credentials"
+INVALID_TOKEN = "Could not validate credentials"
+FORBIDDEN = "Forbidden"
+DATABASE_CONSTRAINT_VIOLATION = "Database constraint violation"
+DATABASE_ERROR = "Database error"
+DUPLICATE_USER = "Email or username already registered"

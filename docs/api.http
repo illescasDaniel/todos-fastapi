@@ -1,0 +1,226 @@
+# HTTP samples for the To Do List API (VS Code REST Client, IntelliJ HTTP Client, etc.)
+# Start the server first: ./scripts/start.sh or fastapi dev src/todos_app/main.py --port 8000
+# Seeded users: jane (user), admin (admin) — password: changeme
+# POST /users signup always creates role=user; use seed admin or Authentication docs for admin access
+# Stable seed UUIDs are defined in src/todos_app/domain/ids.py
+
+@host = http://127.0.0.1:8000
+
+# Seed IDs (UUID v7)
+@jane_user_id = 019e7000-0000-7000-8000-000000000001
+@admin_user_id = 019e7000-0000-7000-8000-000000000002
+@seed_todo_id = 019e7000-0000-7000-8000-000000000003
+@seed_todo_last_id = 019e7000-0000-7000-8000-000000000004
+@unknown_id = 019e7000-0000-7000-8000-000000000099
+
+### ----------------------------------------
+### Auth (/auth)
+### ----------------------------------------
+
+### Auth — login as regular user (jane)
+# @name login_jane
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "jane",
+  "password": "changeme"
+}
+
+@jane_token = {{login_jane.response.body.access_token}}
+
+### Auth — login as admin
+# @name login_admin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "changeme"
+}
+
+@admin_token = {{login_admin.response.body.access_token}}
+
+### ----------------------------------------
+### ToDos router (/todos)
+### ----------------------------------------
+
+### ToDos — list (first page, default limit 20; regular user sees own todos only)
+GET {{host}}/todos?limit=20
+Authorization: Bearer {{jane_token}}
+
+### ToDos — list as admin (all todos)
+GET {{host}}/todos?limit=20
+Authorization: Bearer {{admin_token}}
+
+### ToDos — list (next page; use next_last_id from the previous response)
+GET {{host}}/todos?last_id={{seed_todo_last_id}}&limit=20
+Authorization: Bearer {{jane_token}}
+
+### ToDos — get by id (seeded record, owner)
+GET {{host}}/todos/{{seed_todo_id}}
+Authorization: Bearer {{jane_token}}
+
+### ToDos — get by id as admin (any todo)
+GET {{host}}/todos/{{seed_todo_id}}
+Authorization: Bearer {{admin_token}}
+
+### ToDos — create as admin for self (for forbidden get example below)
+# @name create_admin_owned_todo
+POST {{host}}/todos
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "title": "Admin-only task",
+  "description": "Owned by admin; jane cannot read this.",
+  "priority": "low",
+  "completed": false,
+  "owner_id": "{{admin_user_id}}"
+}
+
+### ToDos — get by id (404: not in jane's scope — not owner)
+GET {{host}}/todos/{{create_admin_owned_todo.response.body.id}}
+Authorization: Bearer {{jane_token}}
+
+### ToDos — get by id (404: missing or not in your scope)
+GET {{host}}/todos/{{unknown_id}}
+Authorization: Bearer {{jane_token}}
+
+### ToDos — create (regular user; owner_id in body is ignored)
+POST {{host}}/todos
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "title": "Set up FastAPI project",
+  "description": "Initialize app, routes, and database wiring.",
+  "priority": "high",
+  "completed": false
+}
+
+### ToDos — create as admin for another user
+POST {{host}}/todos
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "title": "Admin-assigned task",
+  "description": "Created by admin on behalf of jane.",
+  "priority": "medium",
+  "completed": false,
+  "owner_id": "{{jane_user_id}}"
+}
+
+### ToDos — update (full replacement)
+PUT {{host}}/todos/{{seed_todo_id}}
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "title": "Set up FastAPI project",
+  "description": "Routes, schemas, and repository wiring done.",
+  "priority": "medium",
+  "completed": true
+}
+
+### ToDos — patch (partial update)
+PATCH {{host}}/todos/{{seed_todo_id}}
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "completed": false
+}
+
+### ToDos — update (not found)
+PUT {{host}}/todos/{{unknown_id}}
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "title": "Missing todo",
+  "description": "This id does not exist.",
+  "priority": "low",
+  "completed": false
+}
+
+### ToDos — delete (existing id; 204 No Content)
+DELETE {{host}}/todos/{{seed_todo_id}}
+Authorization: Bearer {{jane_token}}
+
+### ToDos — delete (not found)
+DELETE {{host}}/todos/{{unknown_id}}
+Authorization: Bearer {{jane_token}}
+
+### ----------------------------------------
+### Users router (/users)
+### ----------------------------------------
+
+### Users — register (public; always creates role=user; role field is rejected)
+POST {{host}}/users
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "username": "newuser",
+  "first_name": "New",
+  "last_name": "User",
+  "password": "changeme"
+}
+
+### Users — get authenticated profile
+GET {{host}}/users/me
+Authorization: Bearer {{jane_token}}
+
+### Users — replace self (password optional)
+PUT {{host}}/users/me
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "username": "jane",
+  "first_name": "Jane",
+  "last_name": "Doe"
+}
+
+### Users — patch self (partial)
+PATCH {{host}}/users/me
+Authorization: Bearer {{jane_token}}
+Content-Type: application/json
+
+{
+  "last_name": "Smith"
+}
+
+### Users — replace as admin (403 for non-admin)
+PUT {{host}}/users/{{jane_user_id}}
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "username": "jane",
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "role": "user",
+  "is_active": true
+}
+
+### Users — patch as admin
+PATCH {{host}}/users/{{jane_user_id}}
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "is_active": false
+}
+
+### Users — soft delete (deactivate)
+DELETE {{host}}/users/{{jane_user_id}}
+Authorization: Bearer {{admin_token}}
+
+### Users — hard delete (removes user and their todos)
+DELETE {{host}}/users/{{jane_user_id}}?hard=true
+Authorization: Bearer {{admin_token}}

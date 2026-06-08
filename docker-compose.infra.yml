@@ -1,0 +1,41 @@
+# Local development infra only (Valkey + PostgreSQL). Not used for production deploy.
+# Path A host app: ./scripts/start.sh — Postgres on 127.0.0.1, app in .venv with hot reload.
+# Path B full stack: ./scripts/container/up.sh — merges docker-compose.app.base.yml + docker-compose.app.with-infra.yml
+name: todos
+
+services:
+  valkey:
+    image: docker.io/valkey/valkey:8-alpine
+    container_name: todos-valkey
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - todos-valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: todos-postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-todos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-todos}
+    volumes:
+      - todos-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  todos-postgres-data:
+  todos-valkey-data:

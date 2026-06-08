@@ -1,0 +1,39 @@
+{
+	"files.associations": {
+		".env": "dotenv",
+		".env.*": "dotenv"
+	},
+	"files.exclude": {
+		"**/__pycache__": true,
+		"**/*.py[cod]": true,
+		"**/*$py.class": true,
+		"**/.pytest_cache": true,
+		"**/.ruff_cache": true,
+		"**/.mypy_cache": true,
+		"**/.coverage": true,
+		"**/*.egg-info": true,
+		"**/.venv": true,
+		"**/venv": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true
+	},
+	"search.exclude": {
+		"**/__pycache__": true,
+		"**/.pytest_cache": true,
+		"**/.ruff_cache": true,
+		"**/.mypy_cache": true,
+		"**/.venv": true,
+		"**/venv": true,
+		"**/*.egg-info": true
+	},
+	"files.watcherExclude": {
+		"**/__pycache__/**": true,
+		"**/.pytest_cache/**": true,
+		"**/.ruff_cache/**": true,
+		"**/.venv/**": true,
+		"**/venv/**": true
+	},
+	"cursorpyright.analysis.typeCheckingMode": "strict",
+	"cursorpyright.analysis.diagnosticMode": "workspace",
+	"editor.inlayHints.enabled": "offUnlessPressed"
+}

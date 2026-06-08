@@ -1,0 +1,9 @@
+# Local full-stack overlay — wait for bundled infra before starting the app.
+# Path B only: merge with docker-compose.infra.yml + docker-compose.app.base.yml via ./scripts/container/up.sh
+services:
+  app:
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy

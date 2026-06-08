@@ -1,0 +1,23 @@
+@startuml hexagonal_overview
+!pragma layout smetana
+!include <C4/C4_Container>
+
+title Hexagonal architecture — ToDo API (overview)
+
+Person(client, "Client", "HTTP")
+
+System_Boundary(todoApi, "ToDo API") {
+	Container(api, "api", "FastAPI", "driving adapter")
+	Container(app, "application", "Python", "use cases")
+	Container(domain, "domain + ports", "Python", "entities, Protocol ports")
+	ContainerDb(persistence, "persistence", "SQLAlchemy", "driven adapter")
+	Container(auth, "auth", "JWT + Argon2", "driven adapter")
+}
+
+Rel(client, api, "HTTPS")
+Rel(api, app, "use cases")
+Rel(app, domain, "orchestrates")
+Rel(persistence, domain, "implements port")
+Rel(auth, domain, "implements port")
+
+@enduml

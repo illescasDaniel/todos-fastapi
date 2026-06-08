@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastapi-todos"
+version = "0.1.0"
+description = "Demo/portfolio FastAPI todo API showcasing scalable backend patterns: hexagonal layers, DI, PostgreSQL, JWT auth, migrations, and tests."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Daniel Illescas Romero" }]
+requires-python = ">=3.14"
+dependencies = [
+	"alembic>=1.14.0",
+	"argon2-cffi>=23.1.0",
+	"asyncpg>=0.30.0",
+	"fastapi[standard]>=0.110.0",
+	"greenlet>=3.5.1",
+	"pydantic>=2.0.0",
+	"PyJWT>=2.8.0",
+	"sqlalchemy>=2.0.50",
+	"uvicorn>=0.30.0",
+	"valkey>=6.1",
+]
+
+[project.optional-dependencies]
+dev = [
+	"pytest>=8.0",
+	"pytest-asyncio>=0.24",
+	"pytest-cov>=6.0",
+	"ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/illescasDaniel/todos-fastapi"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# --- RUFF (Linter & Import Sorter) ---
+[tool.ruff]
+line-length = 120
+target-version = 'py314'
+src = ['src', 'tests']
+
+[tool.pytest.ini_options]
+testpaths = ['tests']
+pythonpath = ['tests']
+asyncio_mode = 'auto'
+asyncio_default_fixture_loop_scope = 'session'
+asyncio_default_test_loop_scope = 'session'
+markers = [
+	'unit: fast tests without I/O',
+	'integration: tests that use PostgreSQL or HTTP',
+]
+
+[tool.coverage.run]
+source = ["todos_app"]
+omit = ["*/infrastructure/persistence/seeding/*", "alembic/env.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 90
+
+[tool.ruff.format]
+indent-style = "tab"
+
+[tool.ruff.lint]
+# Enable specific rules:
+# F = Pyflakes (Finds unused imports/variables)
+# I = isort (Sorts imports)
+# E = pycodestyle errors
+select = ['F', 'I', 'E']
+# Allow fixing for all enabled rules (imports will be removed/sorted automatically)
+fixable = ['ALL']
+# --- RUFF end ---
+
+[tool.ruff.lint.isort]
+# Ensure compatibility with YAPF's vertical style
+combine-as-imports = true
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"tests/conftest.py" = ["E402"]
+
+# --- Type checking (Cursor Pyright / basedpyright) ---
+[tool.basedpyright]
+typeCheckingMode = "strict"
+include = ["src"]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"

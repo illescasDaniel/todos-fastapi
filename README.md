@@ -1,0 +1,122 @@
+# FastAPI ToDo List API
+
+![CI](https://github.com/illescasDaniel/todos-fastapi/actions/workflows/ci.yml/badge.svg)
+![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+A **demo / portfolio** backend that uses a small todo domain to showcase how a production-style API can be structured. The stack is intentionally full-featured — hexagonal layers, dependency injection, JWT auth, Alembic migrations, PostgreSQL persistence, Valkey auth caching, and a layered test suite — not because a todo list needs all of it, but because the patterns transfer to larger services.
+
+Built with FastAPI, Pydantic validation, async SQLAlchemy persistence via [asyncpg](https://github.com/MagicStack/asyncpg), Valkey for auth caching, and Uvicorn as the ASGI server.
+
+**Requires Python 3.14+** (stdlib `uuid.uuid7()` for primary keys; same version as the [Dockerfile](Dockerfile) and Podman Compose stack).
+
+## Tech stack
+
+- **FastAPI** — async HTTP API, OpenAPI, dependency injection
+- **PostgreSQL** — async SQLAlchemy 2 + asyncpg
+- **Valkey** — authenticated-user cache (required at runtime)
+- **JWT + Argon2** — login and password hashing
+- **Alembic** — schema migrations
+- **pytest** — 148 tests, **90%** line coverage gate on `todos_app`
+- **Podman Compose or Docker Compose** — local Valkey + PostgreSQL (scripts accept either `podman compose` or `docker compose`)
+
+> **Security — demo only**
+>
+> - Seeded users (`jane` / `changeme`, `admin` / `changeme`) are for **local development** only. Do not reuse in staging or production.
+> - Interactive OpenAPI UI at `/docs` is available only when `APP_ENV=local`. Staging and production hide `/docs`, `/redoc`, and `/openapi.json`.
+> - See [SECURITY.md](SECURITY.md) before publishing or exposing the API on the internet.
+
+## Why this architecture
+
+The todo API is the **vehicle**, not the goal. This repo demonstrates patterns you would keep when the domain grows:
+
+- **Hexagonal layout** — domain ports at the center; HTTP and persistence are swappable adapters.
+- **Dependency injection** — routes depend on port types, wired in `core/dependencies.py`.
+- **PostgreSQL persistence** — async SQLAlchemy + asyncpg via `DATABASE_URL`.
+- **Auth and authorization** — JWT login, Argon2 passwords, owner-or-admin rules on todos and users.
+- **Migrations and seeding** — Alembic for schema; explicit seed scripts for local demo data only.
+- **Layered tests** — unit tests with fakes, integration tests for repositories and HTTP.
+
+That depth is **intentional**: it shows how to keep business rules testable and infrastructure replaceable without rewriting the API surface.
+
+## Quick start (primary path: infra + host app)
+
+Daily development: Podman or Docker runs **Valkey** and **PostgreSQL** from [`docker-compose.infra.yml`](docker-compose.infra.yml). The API runs on the host in `.venv` with hot reload.
+
+From the project root (see [Getting started](docs/getting-started.md) for full detail):
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # set JWT_SECRET_KEY and POSTGRES_PASSWORD
+./scripts/migrate.sh     # ensure infra, apply Alembic migrations
+./scripts/seed.sh        # optional — demo users jane/admin, password changeme
+./scripts/start.sh       # host API with hot reload
+```
+
+Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/wipe.sh` removes containers and volumes for a full reset; `./scripts/migrate.sh` and `./scripts/seed.sh` work the same for host-app and full-stack paths.
+
+Open [http://localhost:8000/docs](http://localhost:8000/docs) for interactive API docs (local environment only).
+
+<!-- Screenshot placeholder: add docs/images/swagger_ui.png and uncomment the line below -->
+<!-- ![OpenAPI docs](docs/images/swagger_ui.png) -->
+
+### Podman Compose — Path B (local full stack)
+
+Same infra plus an app container via [`docker-compose.app.base.yml`](docker-compose.app.base.yml) + [`docker-compose.app.with-infra.yml`](docker-compose.app.with-infra.yml):
+
+```bash
+cp .env.example .env   # set JWT_SECRET_KEY and POSTGRES_PASSWORD
+./scripts/container/up.sh
+./scripts/seed.sh        # optional — demo data
+```
+
+Path B rewrites loopback `DATABASE_URL` and `VALKEY_URL` to in-network service names inside the container. Host `.env` uses `127.0.0.1`.
+
+Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Path C): copy [`.env.production.example`](.env.production.example) to `.env`, then `deploy.sh` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
+
+## Documentation
+
+| Guide | Contents |
+|-------|----------|
+| [Getting started](docs/getting-started.md) | venv, install, `.env`, migrate, seed, run server |
+| [Database](docs/database.md) | PostgreSQL, Alembic, seeding |
+| [Authentication](docs/authentication.md) | JWT login, admin provisioning, sample users, [api.http](docs/api.http) |
+| [API reference](docs/api.md) | OpenAPI URLs, pagination, route tables |
+| [Development](docs/development.md) | Ruff, pytest, coverage, [stack verification](docs/development.md#stack-verification) |
+| [Deployment](docs/deployment.md) | Podman image, Compose, staging/production |
+| [Architecture](docs/architecture.md) | Hexagonal layout, DI, code conventions |
+| [Contributing](CONTRIBUTING.md) | How to contribute |
+| [Security](SECURITY.md) | Demo scope, reporting, pre-deploy checklist |
+
+## Project at a glance
+
+The app uses **ports and adapters** (hexagonal architecture): HTTP and persistence sit on the outside; business rules and port interfaces sit at the center. Dependencies point inward.
+
+![Hexagonal architecture overview](docs/images/hexagonal_overview.svg)
+
+See [docs/architecture.md](docs/architecture.md) for the full layered layout, package tree, and conventions.
+
+```text
+todo/
+├── docs/                # Guides, architecture reference, api.http samples
+├── alembic/             # Alembic env.py and version scripts
+├── scripts/             # start, migrate, wipe, seed, test, lint, verify_stack helpers
+├── scripts/container/   # Podman Compose: up, deploy, down, logs, build
+├── tests/               # pytest unit and integration suites
+├── docker-compose.infra.yml           # Path A/B infra: Valkey + PostgreSQL (127.0.0.1 ports)
+├── docker-compose.app.base.yml        # App service (Path B base, Path C production)
+├── docker-compose.app.with-infra.yml  # Path B overlay: depends_on bundled infra
+├── Dockerfile           # Multi-stage OCI image (podman build)
+├── .env.example              # Local dev env template (Paths A and B)
+├── .env.production.example   # Staging/production env template (Path C)
+└── src/todos_app/       # Application package — see architecture.md
+```
+
+## Author
+
+**Daniel Illescas Romero** — [GitHub](https://github.com/illescasDaniel)
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
