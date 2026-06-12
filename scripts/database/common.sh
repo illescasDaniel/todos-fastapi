@@ -3,6 +3,8 @@
 
 load_database_url() {
 	local url_override="${DATABASE_URL:-}"
+	# shellcheck source=scripts/ports.sh
+	source "$DATABASE_SCRIPTS_DIR/../ports.sh"
 	if [[ -f "$PROJECT_ROOT/.env" ]]; then
 		set -a
 		# shellcheck source=/dev/null
@@ -12,7 +14,7 @@ load_database_url() {
 	if [[ -n "$url_override" ]]; then
 		DATABASE_URL="$url_override"
 	else
-		DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://todos:changeme@127.0.0.1:5432/todos}"
+		DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://todos:changeme@127.0.0.1:${POSTGRES_PORT}/todos}"
 	fi
 }
 

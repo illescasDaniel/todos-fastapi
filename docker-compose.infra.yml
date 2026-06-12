@@ -8,7 +8,7 @@ services:
     image: docker.io/valkey/valkey:8-alpine
     container_name: todos-valkey
     ports:
-      - "127.0.0.1:6379:6379"
+      - "${COMPOSE_INFRA_BIND:-127.0.0.1}:${VALKEY_PORT:-6379}:6379"
     volumes:
       - todos-valkey-data:/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     image: docker.io/library/postgres:16-alpine
     container_name: todos-postgres
     ports:
-      - "127.0.0.1:5432:5432"
+      - "${COMPOSE_INFRA_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todos}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}

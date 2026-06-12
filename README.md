@@ -56,7 +56,17 @@ cp .env.example .env   # set JWT_SECRET_KEY and POSTGRES_PASSWORD
 
 Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/wipe.sh` removes containers and volumes for a full reset; `./scripts/migrate.sh` and `./scripts/seed.sh` work the same for host-app and full-stack paths.
 
-Open [http://localhost:8000/docs](http://localhost:8000/docs) for interactive API docs (local environment only).
+Open `http://localhost:${API_PORT:-8000}/docs` for interactive API docs (local environment only; `API_PORT` from `.env`).
+
+### Cursor MCP (agent tools)
+
+A separate MCP server under [`mcp/todos-backend/`](mcp/todos-backend/) lets Cursor agents call the API and run dev scripts (`auth_login`, `todos_create`, `stack_compose_up`, etc.) via typed tools.
+
+1. Install the MCP venv: `cd mcp/todos-backend && python3.14 -m venv .venv && source .venv/bin/activate && pip install -e .`
+2. Open the **repo root** in Cursor, enable **todos-backend** in the **Agents** view (config: [`.cursor/mcp.json`](.cursor/mcp.json)).
+3. Start the API (`./scripts/start.sh`), then try `health_check` and `auth_login` in Agent chat.
+
+The MCP uses its **own** `.venv` in `mcp/todos-backend/` (not global Python, not the API venv). See [docs/mcp.md](docs/mcp.md).
 
 <!-- Screenshot placeholder: add docs/images/swagger_ui.png and uncomment the line below -->
 <!-- ![OpenAPI docs](docs/images/swagger_ui.png) -->
@@ -86,6 +96,7 @@ Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Pat
 | [Development](docs/development.md) | Ruff, pytest, coverage, [stack verification](docs/development.md#stack-verification) |
 | [Deployment](docs/deployment.md) | Podman image, Compose, staging/production |
 | [Architecture](docs/architecture.md) | Hexagonal layout, DI, code conventions |
+| [MCP server](docs/mcp.md) | Cursor agent tools for the API and local dev stack |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 | [Security](SECURITY.md) | Demo scope, reporting, pre-deploy checklist |
 
@@ -103,6 +114,7 @@ todo/
 ├── alembic/             # Alembic env.py and version scripts
 ├── scripts/             # start, migrate, wipe, seed, test, lint, verify_stack helpers
 ├── scripts/container/   # Podman Compose: up, deploy, down, logs, build
+├── mcp/todos-backend/   # Cursor MCP server (API + lifecycle tools)
 ├── tests/               # pytest unit and integration suites
 ├── docker-compose.infra.yml           # Path A/B infra: Valkey + PostgreSQL (127.0.0.1 ports)
 ├── docker-compose.app.base.yml        # App service (Path B base, Path C production)

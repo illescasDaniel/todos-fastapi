@@ -56,7 +56,7 @@ Three deployment paths share the same environment variables but use different Co
 | **B — Local full stack** | Prod-like local smoke | `docker-compose.infra.yml` + [`docker-compose.app.base.yml`](../docker-compose.app.base.yml) + [`docker-compose.app.with-infra.yml`](../docker-compose.app.with-infra.yml) | App container | Bundled; URLs rewritten to `postgres`/`valkey` |
 | **C — Production** | Staging / production | `docker-compose.app.base.yml` only | App container | External managed URLs from `.env` |
 
-Paths A and B use local infra ([`docker-compose.infra.yml`](../docker-compose.infra.yml)): **Valkey** on `127.0.0.1:6379` and **PostgreSQL** on `127.0.0.1:5432`. Host `.env` uses `127.0.0.1` for `DATABASE_URL` and `VALKEY_URL`; Path B rewrites `@127.0.0.1` / `valkey://127.0.0.1:…` to in-network service names inside the app container.
+Paths A and B use local infra ([`docker-compose.infra.yml`](../docker-compose.infra.yml)): **Valkey** on `COMPOSE_INFRA_BIND:VALKEY_PORT` (defaults `127.0.0.1:6379`) and **PostgreSQL** on `COMPOSE_INFRA_BIND:POSTGRES_PORT` (defaults `127.0.0.1:5432`). Host `.env` uses `127.0.0.1` for `DATABASE_URL` and `VALKEY_URL`; Path B rewrites `@127.0.0.1` / `valkey://127.0.0.1:…` to in-network service names inside the app container.
 
 **Prerequisites (Paths A and B):** rootless Podman (`./scripts/install_podman.sh`), `.env` copied from [`.env.example`](../.env.example) with a strong `JWT_SECRET_KEY` (at least 32 characters, not the template placeholder) and `POSTGRES_PASSWORD` set.
 
@@ -92,12 +92,12 @@ If binding to ports below 1024 fails as rootless, you may need `net.ipv4.ip_unpr
 
 | Context | `DATABASE_URL` | `VALKEY_URL` |
 |---------|----------------|--------------|
-| Host app / `.env` (Path A) | `postgresql+asyncpg://todos:PASSWORD@127.0.0.1:5432/todos` | `valkey://127.0.0.1:6379/0` |
+| Host app / `.env` (Path A) | `postgresql+asyncpg://todos:PASSWORD@127.0.0.1:${POSTGRES_PORT}/todos` | `valkey://127.0.0.1:${VALKEY_PORT}/0` |
 | App container (Path B) | `postgresql+asyncpg://todos:PASSWORD@postgres:5432/todos` | `valkey://valkey:6379/0` |
 
 Set `POSTGRES_PASSWORD` in `.env` before starting bundled PostgreSQL — Compose requires it and does not ship weak inline defaults. **Never reuse local dev database passwords in staging or production.**
 
-The API port binds to `127.0.0.1:8000` by default (`COMPOSE_APP_BIND` in `.env`); override only if you need LAN access.
+The API binds to `COMPOSE_APP_BIND:API_PORT` by default (`127.0.0.1:8000`); override `COMPOSE_APP_BIND` only if you need LAN access.
 
 **Path A — infra-only + host app:** use `./scripts/start.sh` with `DATABASE_URL` in `.env` — see [Getting started](getting-started.md).
 

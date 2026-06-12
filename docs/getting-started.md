@@ -89,8 +89,9 @@ Copy [`.env.example`](../.env.example) to `.env` in the project root and set at 
 
 - `JWT_SECRET_KEY` — required; generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
 - `POSTGRES_PASSWORD` — required for the Compose PostgreSQL service
-- `DATABASE_URL` — `postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:5432/todos` (use the same password as `POSTGRES_PASSWORD`)
-- `VALKEY_URL` — optional; defaults to `valkey://127.0.0.1:6379/0` (`./scripts/start.sh` ensures Valkey infra is running)
+- `API_PORT`, `POSTGRES_PORT`, `VALKEY_PORT` — local host ports (defaults `8000`, `5432`, `6379`; see [`.env.example`](../.env.example))
+- `DATABASE_URL` — `postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT}/todos` (use the same password as `POSTGRES_PASSWORD`)
+- `VALKEY_URL` — optional; defaults to `valkey://127.0.0.1:${VALKEY_PORT}/0` (`./scripts/start.sh` ensures Valkey infra is running)
 - `APP_ENV` — optional; `local` (default), `staging`, or `production`
 
 **2. Create database tables**
@@ -172,11 +173,11 @@ You can also bypass the script and call the `fastapi` command line tool directly
 
 - **Development Mode** (auto-reload):
   ```bash
-  fastapi dev src/todos_app/main.py --port 8000
+  fastapi dev src/todos_app/main.py --port "${API_PORT:-8000}"
   ```
 - **Production Mode**:
   ```bash
-  fastapi run src/todos_app/main.py --port 8000
+  fastapi run src/todos_app/main.py --port "${API_PORT:-8000}"
   ```
 
 ### Option C: Running `main.py` directly
@@ -229,7 +230,7 @@ For **production deploy** (Path C), copy [`.env.production.example`](../.env.pro
 | `./scripts/seed.sh` | Reset DB and load demo users/todos (via app container) |
 | `./scripts/container/logs.sh` | Follow app logs |
 
-Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open [http://localhost:8000/docs](http://localhost:8000/docs).
+Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT:-8000}/docs`.
 
 **Infra-only + host app:** use `./scripts/start.sh` with the same `DATABASE_URL` — see [Deployment](deployment.md#local-podman-compose).
 

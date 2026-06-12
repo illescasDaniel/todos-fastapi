@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "todos-backend": {
+      "command": "${workspaceFolder}/mcp/todos-backend/.venv/bin/python",
+      "args": ["-m", "todos_mcp"]
+    }
+  }
+}

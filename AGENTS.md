@@ -24,6 +24,7 @@ Follow the layer boundaries, Protocol-based ports, and Depends injection pattern
 | Manual HTTP samples (auth flow, seed IDs, request bodies) | [docs/api.http](docs/api.http) |
 | Lint, tests, coverage | [docs/development.md](docs/development.md) |
 | Stack verification (manual, Compose + PostgreSQL) | [docs/development.md#stack-verification](docs/development.md#stack-verification) — `./scripts/verify_stack.sh` |
+| Cursor MCP (API + lifecycle tools) | [docs/mcp.md](docs/mcp.md) — config at `.cursor/mcp.json`, package at `mcp/todos-backend/` |
 
 ## Package layout (`__init__.py`)
 

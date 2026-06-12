@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "todos-mcp"
+version = "0.1.0"
+description = "MCP server for managing the FastAPI todos backend API and local dev stack."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+	"httpx>=0.28.0",
+	"mcp[cli]>=1.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+	"pytest>=8.0",
+	"pytest-asyncio>=0.24",
+	"ruff",
+]
+
+[project.scripts]
+todos-mcp = "todos_mcp.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+	"integration: tests that require a running API",
+]

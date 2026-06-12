@@ -1,6 +1,6 @@
 # API reference
 
-Once the server is running on [http://localhost:8000](http://localhost:8000), you can access the following resources.
+Once the server is running (default `http://localhost:8000`, or `API_PORT` from `.env`), you can access the following resources.
 
 Obtain a JWT access token via `POST /auth/login` before calling protected routes — see [Authentication](authentication.md).
 

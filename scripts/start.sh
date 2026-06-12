@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/database/setup.sh"
 mode="${1:-dev}"
 
 database_load_env
+# shellcheck source=scripts/ports.sh
+source "$SCRIPT_DIR/ports.sh"
 
 if [[ ! -d ".venv" ]]; then
 	echo "Missing .venv. Create it first: python3 -m venv .venv"
@@ -27,7 +29,7 @@ database_clear_settings_cache
 source ".venv/bin/activate"
 
 if [[ "$mode" == "pro" ]]; then
-	fastapi run src/todos_app/main.py --port 8000
+	fastapi run src/todos_app/main.py --port "$API_PORT"
 else
-	fastapi dev src/todos_app/main.py --port 8000
+	fastapi dev src/todos_app/main.py --port "$API_PORT"
 fi

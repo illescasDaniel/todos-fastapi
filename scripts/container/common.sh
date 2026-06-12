@@ -53,15 +53,16 @@ require_env_file() {
 }
 
 load_compose_env() {
-	if [[ ! -f "$PROJECT_ROOT/.env" ]]; then
-		return 0
-	fi
 	local saved_database_url="${DATABASE_URL:-}"
 	local saved_valkey_url="${VALKEY_URL:-}"
-	set -a
-	# shellcheck source=/dev/null
-	source "$PROJECT_ROOT/.env"
-	set +a
+	# shellcheck source=scripts/ports.sh
+	source "$PROJECT_ROOT/scripts/ports.sh"
+	if [[ -f "$PROJECT_ROOT/.env" ]]; then
+		set -a
+		# shellcheck source=/dev/null
+		source "$PROJECT_ROOT/.env"
+		set +a
+	fi
 	if [[ -n "$saved_database_url" ]]; then
 		export DATABASE_URL="$saved_database_url"
 	fi
@@ -80,7 +81,7 @@ load_database_url() {
 		grep -E '^[[:space:]]*DATABASE_URL=' .env | grep -v '^[[:space:]]*#' | tail -n 1 || true
 	)"
 	if [[ -z "$line" ]]; then
-		DATABASE_URL="postgresql+asyncpg://todos:changeme@127.0.0.1:5432/todos"
+		DATABASE_URL="postgresql+asyncpg://todos:changeme@127.0.0.1:${POSTGRES_PORT:-5432}/todos"
 		return 0
 	fi
 	DATABASE_URL="${line#DATABASE_URL=}"
@@ -102,7 +103,7 @@ load_valkey_url() {
 		grep -E '^[[:space:]]*VALKEY_URL=' .env | grep -v '^[[:space:]]*#' | tail -n 1 || true
 	)"
 	if [[ -z "$line" ]]; then
-		VALKEY_URL="valkey://127.0.0.1:6379/0"
+		VALKEY_URL="valkey://127.0.0.1:${VALKEY_PORT:-6379}/0"
 		return 0
 	fi
 	VALKEY_URL="${line#VALKEY_URL=}"
@@ -263,7 +264,7 @@ container_wait_for_health() {
 	local attempts="${1:-45}"
 	local i
 	for ((i = 1; i <= attempts; i++)); do
-		if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+		if curl -sf "http://localhost:${API_PORT:-8000}/health" >/dev/null 2>&1; then
 			return 0
 		fi
 		sleep 2
@@ -274,8 +275,8 @@ container_wait_for_health() {
 container_print_stack_ready() {
 	echo ""
 	echo "Stack is up."
-	echo "  API docs: http://localhost:8000/docs"
-	echo "  Health:   http://localhost:8000/health"
+	echo "  API docs: http://localhost:${API_PORT:-8000}/docs"
+	echo "  Health:   http://localhost:${API_PORT:-8000}/health"
 	echo "  Logs:     ./scripts/container/logs.sh"
 	echo "  Stop:     ./scripts/container/down.sh"
 }
@@ -283,7 +284,7 @@ container_print_stack_ready() {
 container_print_deploy_ready() {
 	echo ""
 	echo "App is up (production compose)."
-	echo "  Health: http://localhost:8000/health"
+	echo "  Health: http://localhost:${API_PORT:-8000}/health"
 	echo "  Logs:   ./scripts/container/logs.sh --prod"
 	echo "  Stop:   ./scripts/container/down.sh --prod"
 }

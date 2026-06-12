@@ -60,7 +60,7 @@ chmod +x scripts/run_tests.sh   # once, if needed
 ./scripts/run_tests.sh --coverage -m unit
 ```
 
-Tests use a PostgreSQL test database and a fixed JWT secret from [`tests/conftest.py`](../tests/conftest.py); they do not use Compose volumes or a host dev database. Default `TEST_DATABASE_URL` is `postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test` — ensure PostgreSQL is reachable on `127.0.0.1:5432` (the infra Compose stack provides this locally).
+Tests use a PostgreSQL test database and a fixed JWT secret from [`tests/conftest.py`](../tests/conftest.py); they do not use Compose volumes or a host dev database. Default `TEST_DATABASE_URL` uses `POSTGRES_PORT` from `.env` (default `5432`) — ensure PostgreSQL is reachable on `127.0.0.1:${POSTGRES_PORT}` (the infra Compose stack provides this locally).
 
 **Valkey is not required for tests** — `conftest.py` overrides `UserAuthCache` with `FakeUserAuthCache` so CI stays fast without a Valkey service.
 
@@ -104,7 +104,7 @@ Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `P
 
 **When not to run:** routine feature work (use `./scripts/run_tests.sh` instead).
 
-**Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, port `8000` free, PostgreSQL on `127.0.0.1:5432`. Set `POSTGRES_PASSWORD` in `.env`.
+**Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, `API_PORT` free (default `8000`), PostgreSQL on `127.0.0.1:${POSTGRES_PORT}` (default `5432`). Set `POSTGRES_PASSWORD` in `.env`.
 
 ```bash
 ./scripts/verify_stack.sh                         # all scenarios + coverage

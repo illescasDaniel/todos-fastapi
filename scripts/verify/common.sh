@@ -1,7 +1,6 @@
 # Shared helpers for scripts/verify_stack.sh and scripts/verify/*.sh
 
 VERIFY_API_HOST="${VERIFY_API_HOST:-127.0.0.1}"
-VERIFY_API_PORT="${VERIFY_API_PORT:-8000}"
 VERIFY_JWT_SECRET="${VERIFY_JWT_SECRET:-test-secret-key-for-verify-stack-32bytes!}"
 VERIFY_POSTGRES_PASSWORD="${VERIFY_POSTGRES_PASSWORD:-changeme}"
 
@@ -27,10 +26,24 @@ verify_require_prereqs() {
 	fi
 }
 
+verify_load_ports() {
+	# shellcheck source=scripts/ports.sh
+	source "${PROJECT_ROOT}/scripts/ports.sh"
+	if [[ -f "${PROJECT_ROOT:-}/.env" ]]; then
+		set -a
+		# shellcheck source=/dev/null
+		source "$PROJECT_ROOT/.env"
+		set +a
+	fi
+	VERIFY_API_PORT="${VERIFY_API_PORT:-$API_PORT}"
+	export VERIFY_API_PORT
+}
+
 verify_apply_defaults() {
+	verify_load_ports
 	export APP_ENV=local
 	export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$VERIFY_JWT_SECRET}"
-	export VALKEY_URL="${VALKEY_URL:-valkey://127.0.0.1:6379/0}"
+	export VALKEY_URL="${VALKEY_URL:-valkey://127.0.0.1:${VALKEY_PORT}/0}"
 	export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$VERIFY_POSTGRES_PASSWORD}"
 }
 

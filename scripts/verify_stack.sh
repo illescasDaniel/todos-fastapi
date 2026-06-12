@@ -38,7 +38,7 @@ Options:
   --keep              Leave the last Compose stack running (debug)
   -h, --help          Show this help
 
-Requires: .venv with pip install -e ".[dev]", curl, podman, PostgreSQL on 127.0.0.1:5432 for pytest.
+Requires: .venv with pip install -e ".[dev]", curl, podman, PostgreSQL on 127.0.0.1 (POSTGRES_PORT, default 5432) for pytest.
 EOF
 }
 
@@ -93,7 +93,8 @@ verify_should_run() {
 }
 
 verify_postgres_url() {
-	echo "postgresql+asyncpg://todos:${POSTGRES_PASSWORD:-$VERIFY_POSTGRES_PASSWORD}@127.0.0.1:5432/todos"
+	verify_load_ports
+	echo "postgresql+asyncpg://todos:${POSTGRES_PASSWORD:-$VERIFY_POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/todos"
 }
 
 verify_run_scenario() {

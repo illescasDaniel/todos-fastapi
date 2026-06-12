@@ -13,7 +13,7 @@ Persistence is **async end-to-end**: route handlers and repository ports are `as
 | Setting | Example / notes |
 |---------|-----------------|
 | **`DATABASE_URL`** | `postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:5432/todos` |
-| **Local storage** | [`docker-compose.infra.yml`](../docker-compose.infra.yml) — PostgreSQL 16 on `127.0.0.1:5432` |
+| **Local storage** | [`docker-compose.infra.yml`](../docker-compose.infra.yml) — PostgreSQL 16 on `COMPOSE_INFRA_BIND:POSTGRES_PORT` (defaults `127.0.0.1:5432`) |
 | **Full-stack overlay** | App container uses `@postgres:5432` (rewritten from host `.env`) |
 
 Set `POSTGRES_PASSWORD` in `.env` before starting database containers — Compose does not ship weak inline defaults. Use the same password in `DATABASE_URL`. These values are for **local development only**; generate fresh credentials per staging or production environment (see [Deployment](deployment.md#local-podman-compose)).

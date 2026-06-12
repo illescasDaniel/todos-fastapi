@@ -62,17 +62,19 @@ _tests_bootstrap_postgres() {
 	# shellcheck source=scripts/database/setup.sh
 	source "${script_dir}/database/setup.sh"
 	database_load_env
+	# shellcheck source=scripts/ports.sh
+	source "${script_dir}/ports.sh"
 
 	if [[ -z "${TEST_DATABASE_URL:-}" ]]; then
 		if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
 			echo "Set POSTGRES_PASSWORD in .env (or export TEST_DATABASE_URL) before running tests." >&2
 			exit 1
 		fi
-		export TEST_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:-todos}:${POSTGRES_PASSWORD}@127.0.0.1:5432/todos_test"
+		export TEST_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:-todos}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/todos_test"
 	fi
 
-	if _tests_postgres_port_open 127.0.0.1 5432; then
-		echo "PostgreSQL is already reachable on 127.0.0.1:5432."
+	if _tests_postgres_port_open 127.0.0.1 "$POSTGRES_PORT"; then
+		echo "PostgreSQL is already reachable on 127.0.0.1:${POSTGRES_PORT}."
 		# shellcheck source=scripts/database/postgresql.sh
 		source "${DATABASE_SCRIPTS_DIR}/postgresql.sh"
 		if _postgres_container_running; then
