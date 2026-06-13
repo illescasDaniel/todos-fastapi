@@ -11,13 +11,14 @@ class FakeUserRepository:
 		if users:
 			for user in users:
 				if user.id is not None:
-					self._users[user.id] = user
-					self._by_username[user.username.lower()] = user
+					stored = self._stored_user(user, user_id=user.id)
+					self._users[stored.id] = stored
+					self._by_username[stored.username] = stored
 
-	async def add(self, user: User) -> User:
-		new_user_id = new_id()
-		stored = User(
-			id=new_user_id,
+	@staticmethod
+	def _stored_user(user: User, *, user_id: UUID) -> User:
+		return User(
+			id=user_id,
 			email=user.email,
 			username=user.username.lower(),
 			first_name=user.first_name,
@@ -27,6 +28,10 @@ class FakeUserRepository:
 			role=user.role,
 			token_version=user.token_version,
 		)
+
+	async def add(self, user: User) -> User:
+		new_user_id = new_id()
+		stored = self._stored_user(user, user_id=new_user_id)
 		self._users[new_user_id] = stored
 		self._by_username[stored.username] = stored
 		return stored
@@ -35,11 +40,12 @@ class FakeUserRepository:
 		if user.id is None or user.id not in self._users:
 			return None
 		old = self._users[user.id]
-		if old.username != user.username.lower():
+		stored = self._stored_user(user, user_id=user.id)
+		if old.username != stored.username:
 			del self._by_username[old.username]
-			self._by_username[user.username.lower()] = user
-		self._users[user.id] = user
-		return user
+			self._by_username[stored.username] = stored
+		self._users[user.id] = stored
+		return stored
 
 	async def get_by_id(self, user_id: UUID) -> User | None:
 		return self._users.get(user_id)
