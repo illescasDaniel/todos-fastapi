@@ -9,11 +9,15 @@ _valkey_container_running() {
 
 _valkey_wait_for_ready() {
 	local retries=30
+	local auth_args=()
+	if [[ -n "${VALKEY_PASSWORD:-}" ]]; then
+		auth_args=(-a "$VALKEY_PASSWORD")
+	fi
 	echo "Waiting for Valkey to accept connections..."
 	while (( retries > 0 )); do
 		if (
 			cd "$PROJECT_ROOT"
-			infra_compose exec -T valkey valkey-cli ping
+			infra_compose exec -T valkey valkey-cli "${auth_args[@]}" ping
 		) &>/dev/null; then
 			return 0
 		fi

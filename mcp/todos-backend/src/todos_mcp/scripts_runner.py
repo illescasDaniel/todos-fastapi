@@ -3,6 +3,7 @@ import os
 import re
 import signal
 import subprocess
+import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -178,4 +179,16 @@ def stack_health_curl(settings: Settings) -> ScriptResult:
 		stdout=result.stdout,
 		stderr=result.stderr,
 		exit_code=result.returncode,
+	)
+
+
+def open_api_docs(settings: Settings) -> ScriptResult:
+	docs_url = settings.docs_url
+	opened = webbrowser.open(docs_url)
+	return ScriptResult(
+		ok=opened,
+		stdout=f"Opened {docs_url} in the default browser." if opened else "",
+		stderr="" if opened else f"Could not open browser for {docs_url}.",
+		exit_code=0 if opened else 1,
+		extra={"url": docs_url},
 	)

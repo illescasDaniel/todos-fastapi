@@ -5,6 +5,7 @@ from mcp.server.fastmcp import FastMCP
 
 from todos_mcp.config import Settings
 from todos_mcp.scripts_runner import (
+	open_api_docs as open_api_docs_in_browser,
 	run_script,
 	stack_health_curl,
 	start_host_background,
@@ -24,6 +25,11 @@ def register(mcp: FastMCP, settings: Settings) -> None:
 	async def stack_health() -> str:
 		"""Check whether the API responds at TODOS_API_BASE_URL/health (curl)."""
 		return stack_health_curl(settings).to_json()
+
+	@mcp.tool()
+	async def open_api_docs() -> str:
+		"""Open Swagger UI at TODOS_API_BASE_URL/docs in the default system browser."""
+		return open_api_docs_in_browser(settings).to_json()
 
 	@mcp.tool()
 	async def stack_start_host(mode: str = "dev") -> str:

@@ -79,6 +79,7 @@ Protected tools accept optional `access_token`; otherwise they use the token fro
 | Tool | Action |
 |------|--------|
 | `stack_health` | `curl` API `/health` |
+| `open_api_docs` | Open `TODOS_API_BASE_URL/docs` in the default browser |
 | `stack_start_host` | Background `./scripts/start.sh` (Path A) |
 | `stack_stop_host` | Stop MCP-spawned host process |
 | `stack_compose_up` | `./scripts/container/up.sh` (Path B) |

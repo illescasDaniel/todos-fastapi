@@ -133,7 +133,8 @@ database_url_uses_local_host() {
 }
 
 valkey_url_uses_local_host() {
-	[[ "$1" == valkey://127.0.0.1:* ]] || [[ "$1" == redis://127.0.0.1:* ]]
+	[[ "$1" == valkey://127.0.0.1:* ]] || [[ "$1" == redis://127.0.0.1:* ]] \
+		|| [[ "$1" == valkey://*@127.0.0.1:* ]] || [[ "$1" == redis://*@127.0.0.1:* ]]
 }
 
 export_compose_database_url() {

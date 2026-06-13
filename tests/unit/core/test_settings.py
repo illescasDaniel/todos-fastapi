@@ -51,7 +51,10 @@ def test_settings_rejects_non_hs256_algorithm() -> None:
 		Settings(jwt_secret_key=_VALID_SECRET, jwt_algorithm="HS512")
 
 
-def test_settings_valkey_defaults() -> None:
-	settings = Settings(jwt_secret_key=_VALID_SECRET)
+def test_settings_valkey_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.delenv("VALKEY_URL", raising=False)
+	monkeypatch.delenv("VALKEY_PASSWORD", raising=False)
+	monkeypatch.delenv("AUTH_USER_CACHE_TTL_SECONDS", raising=False)
+	settings = Settings(jwt_secret_key=_VALID_SECRET, _env_file=None)
 	assert settings.valkey_url == "valkey://127.0.0.1:6379/0"
 	assert settings.auth_user_cache_ttl_seconds == 120

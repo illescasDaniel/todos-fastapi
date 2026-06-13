@@ -26,6 +26,28 @@ Follow the layer boundaries, Protocol-based ports, and Depends injection pattern
 | Stack verification (manual, Compose + PostgreSQL) | [docs/development.md#stack-verification](docs/development.md#stack-verification) — `./scripts/verify_stack.sh` |
 | Cursor MCP (API + lifecycle tools) | [docs/mcp.md](docs/mcp.md) — config at `.cursor/mcp.json`, package at `mcp/todos-backend/` |
 
+## Cursor MCP (prefer over shell skills)
+
+When the **todos-backend** MCP server is enabled in Cursor, **use MCP tools first** for local dev and API interaction. They wrap the same repo scripts as the skills below but are easier for agents to invoke (typed tools, structured JSON responses, no shell quoting).
+
+1. **Read tool schemas** under `mcps/project-0-todo-todos-backend/tools/` before calling.
+2. **Prefer MCP** when the server is connected; fall back to project skills or `./scripts/*.sh` only if MCP is disabled or a tool fails.
+3. **Destructive MCP tools** (`db_seed`, `db_wipe`, `stack_compose_down` with `remove=true`) require `MCP_ALLOW_DESTRUCTIVE=true` in repo `.env` (preferred for local dev) — see [docs/mcp.md](docs/mcp.md).
+
+| Task | MCP tool | Fallback |
+|------|----------|----------|
+| Start compose stack (Path B) | `stack_compose_up` | `podman-compose` skill |
+| Stop compose stack | `stack_compose_down` | `podman-compose` skill |
+| Migrate database | `db_migrate` | `alembic-migrate` skill |
+| Seed demo data | `db_seed` | `db-local-ops` skill |
+| Wipe local DB volumes | `db_wipe` | `db-local-ops` skill |
+| Open Swagger UI | `open_api_docs` | `xdg-open http://127.0.0.1:${API_PORT}/docs` |
+| Start host API (Path A) | `stack_start_host` | `./scripts/start.sh` |
+| Check API health | `stack_health` or `health_check` | curl `/health` |
+| Login / todos / users | `auth_login`, `todos_*`, `users_*` | HTTP or [docs/api.http](docs/api.http) |
+
+Typical full-stack bring-up via MCP: `stack_compose_up` → `db_migrate` → `db_seed` → `open_api_docs`.
+
 ## Package layout (`__init__.py`)
 
 This project uses **implicit namespace packages** (PEP 420): layer folders such as `application/`, `domain/`, `api/`, and `infrastructure/` do **not** need `__init__.py` files for imports to work.
@@ -101,11 +123,11 @@ See [docs/development.md#stack-verification](docs/development.md#stack-verificat
 
 ## Schema changes (Alembic)
 
-ORM models live under `src/todos_app/infrastructure/persistence/<feature>/orm.py`. Use the `alembic-migrate` skill:
+ORM models live under `src/todos_app/infrastructure/persistence/<feature>/orm.py`. Prefer MCP `db_migrate` for upgrades; use the `alembic-migrate` skill as fallback:
 
 1. Edit ORM models.
-2. `./scripts/migrate.sh revision -m "describe change"` — **review** autogenerate output in `alembic/versions/`.
-3. `./scripts/migrate.sh` (upgrade head).
+2. `./scripts/migrate.sh revision -m "describe change"` — **review** autogenerate output in `alembic/versions/` (host `.venv`; no MCP wrapper for autogenerate).
+3. `db_migrate` MCP tool or `./scripts/migrate.sh` (upgrade head).
 4. Run the `run-tests` skill.
 
 See [docs/database.md](docs/database.md) for PostgreSQL-specific notes.
@@ -118,8 +140,8 @@ See [docs/database.md](docs/database.md) for PostgreSQL-specific notes.
 | **B — Local full stack** | Prod-like local smoke | `docker-compose.infra.yml` + `docker-compose.app.base.yml` + `docker-compose.app.with-infra.yml` via `./scripts/container/up.sh` | `127.0.0.1` (rewritten inside app container) |
 | **C — Production** | Staging / production | `docker-compose.app.base.yml` only via `./scripts/container/deploy.sh` | External managed URLs |
 
-- **Migrate / seed / wipe** (`./scripts/migrate.sh`, `./scripts/seed.sh`, `./scripts/wipe.sh`): local Paths A and B only; run DB ops via the app container for Path B. Use the `alembic-migrate` and `db-local-ops` skills.
-- **Path B lifecycle** (`up.sh`, `down.sh`, `logs.sh`): use the `podman-compose` skill.
+- **Migrate / seed / wipe** (`./scripts/migrate.sh`, `./scripts/seed.sh`, `./scripts/wipe.sh`): local Paths A and B only; run DB ops via the app container for Path B. Prefer MCP (`db_migrate`, `db_seed`, `db_wipe`); fall back to `alembic-migrate` and `db-local-ops` skills.
+- **Path B lifecycle** (`up.sh`, `down.sh`, `logs.sh`): prefer MCP (`stack_compose_up`, `stack_compose_down`); fall back to the `podman-compose` skill.
 - **Path C lifecycle** (`deploy.sh`, `down.sh --prod`, `logs.sh --prod`): copy [`.env.production.example`](.env.production.example) to `.env` on the deploy host — see [docs/deployment.md](docs/deployment.md#path-c--app-only-compose-primary).
 
 ## Identifiers
@@ -130,6 +152,8 @@ User and todo primary keys are **UUID v7** via `domain/ids.new_id()` (not `uuid4
 
 Store project-specific Cursor skills under `.cursor/skills/<skill-name>/SKILL.md`.
 Keep shared runnable tooling in repo paths (for example `./scripts/run_ruff.sh`, `./scripts/run_tests.sh`, `./scripts/migrate.sh`) so both humans and agents can execute the same command.
+
+**MCP first:** for stack, database, and API tasks, use [Cursor MCP](#cursor-mcp-prefer-over-shell-skills) when `todos-backend` is enabled. Skills below are fallbacks and cover tasks without MCP wrappers (lint, tests, autogenerate revisions).
 
 | Skill | Wrapper | Delegates to |
 |-------|---------|--------------|

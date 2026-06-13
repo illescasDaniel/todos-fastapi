@@ -9,6 +9,7 @@ services:
     image: docker.io/valkey/valkey:8-alpine@sha256:18c7010efe0a74c334ee01bd2c5632735d2c0d9518f85b9ad3d995314c6a0b7a
     container_name: todos-valkey
     command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}"]
+    user: valkey
     ports:
       - "${COMPOSE_INFRA_BIND:-127.0.0.1}:${VALKEY_PORT:-6379}:6379"
     volumes:
@@ -46,6 +47,12 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
 
 volumes:
   todos-postgres-data:
