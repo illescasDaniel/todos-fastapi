@@ -48,7 +48,11 @@ postgres_reset_container() {
 	echo "Resetting PostgreSQL container (recreate volume with current POSTGRES_PASSWORD)..."
 	(
 		cd "$PROJECT_ROOT"
-		infra_compose rm -fsv postgres 2>/dev/null || true
+		infra_compose stop postgres 2>/dev/null || true
+		# Path B app container shares the infra network and blocks postgres removal.
+		podman stop todos-app 2>/dev/null || true
+		podman rm -f todos-app "${POSTGRES_CONTAINER_NAME}" 2>/dev/null || true
+		podman volume rm -f todos_todos-postgres-data postgresql_todos-postgres-data 2>/dev/null || true
 		infra_compose up -d postgres
 	)
 	_postgres_wait_for_ready

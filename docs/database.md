@@ -41,7 +41,7 @@ Schema changes are managed with [Alembic](https://alembic.sqlalchemy.org/). Migr
 2. `./scripts/migrate.sh revision -m "describe change"`
 3. Review the generated file in `alembic/versions/` (always inspect autogenerate output).
 4. `./scripts/migrate.sh`
-5. `./scripts/run_tests.sh`
+5. `./scripts/run/tests.sh`
 
 Equivalent raw commands (with `.venv` active and `PYTHONPATH=src`):
 

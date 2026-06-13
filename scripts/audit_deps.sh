@@ -2,21 +2,18 @@
 
 set -euo pipefail
 
-if [[ ! -d ".venv" ]]; then
-	echo "Missing .venv. Create it first: python3 -m venv .venv"
-	exit 1
-fi
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib.sh
+source "${script_dir}/lib.sh"
 
-source ".venv/bin/activate"
+lib_require_venv
+lib_activate_venv
+
+python -m pip install --upgrade 'pip>=26.1.2'
 
 if ! command -v pip-audit &>/dev/null; then
 	pip install pip-audit
 fi
 
-REQ_FILE="$(mktemp)"
-trap 'rm -f "$REQ_FILE"' EXIT
-
-# fastapi-todos is installed editable for development and is not published on PyPI.
-pip freeze | grep -viE 'fastapi-todos' >"$REQ_FILE"
-
-pip-audit -r "$REQ_FILE"
+# Audit installed PyPI packages in place; skip editable local packages (fastapi-todos, todos-mcp).
+pip-audit -l --skip-editable

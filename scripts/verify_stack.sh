@@ -34,7 +34,7 @@ Options:
   --only FILTER       Run subset: postgres, compose-postgres, bare-metal,
                       compose, all (default: all)
   --skip-http         Skip HTTP smoke checks
-  --skip-coverage     Skip final ./scripts/run_tests.sh --coverage
+  --skip-coverage     Skip final ./scripts/run/tests.sh --coverage
   --keep              Leave the last Compose stack running (debug)
   -h, --help          Show this help
 
@@ -123,7 +123,7 @@ verify_run_coverage() {
 	echo ""
 	echo "=== ci/coverage ==="
 
-	if JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes! "$PROJECT_ROOT/scripts/run_tests.sh" --coverage; then
+	if JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes! "$PROJECT_ROOT/scripts/run/tests.sh" --coverage; then
 		end_ts=$(date +%s)
 		elapsed=$((end_ts - start_ts))
 		verify_record_result "ci/coverage" "ok" "-" "$elapsed"

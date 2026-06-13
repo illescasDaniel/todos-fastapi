@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
 	"basedpyright>=1.29",
+	"pip-audit>=2.7",
 	"pytest>=8.0",
 	"pytest-asyncio>=0.24",
 	"pytest-cov>=6.0",

@@ -8,17 +8,17 @@ With your virtual environment active and development dependencies installed, you
 
 - **Check code for linting/style issues:**
   ```bash
-  ./scripts/run_ruff.sh
+  ./scripts/run/ruff.sh
   ```
 
 ## Type checking (basedpyright)
 
-[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). This is a **local developer** check — CI currently runs Ruff and pytest only, not basedpyright. Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
+[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). Included in the quality gate (`./scripts/run/checks.sh`). Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
 
 From the repo root with `.venv` active:
 
 ```bash
-./scripts/run_pyright.sh
+./scripts/run/pyright.sh
 ```
 
 The script auto-installs `mcp/todos-backend/` editable when `todos_mcp` is not importable. For MCP-only development with `mcp/todos-backend/.venv`, run `basedpyright` from that directory (see `mcp/todos-backend/pyproject.toml` → `[tool.basedpyright]`).
@@ -55,28 +55,29 @@ Use this split for new infrastructure adapters: **factory / guard module** owns 
 
 ## Combined quality gate
 
-After substantive changes, run the full local check sequence. Exits on first failure:
+After substantive changes, run the full local check sequence. All steps run even when one fails; a summary report prints at the end. Exit 1 only when errors exist (warnings-only passes):
 
 ```bash
-./scripts/run_checks.sh
+./scripts/run/checks.sh
 ```
 
-Steps (see `scripts/checks/`): Ruff → basedpyright → MCP tests → CI parity (dependency audit + pytest with coverage using CI env vars).
+Steps (see `scripts/run/checks.sh`): dependency audit → Ruff → basedpyright → MCP tests → pytest with coverage. Default: Ruff check-only. Use `--fix` for Ruff autofix before the gate; `--full` adds stack verification (implies `--fix`, local only).
 
 For deployment-path smoke (Compose, bare-metal, HTTP checks — slow):
 
 ```bash
-./scripts/run_checks.sh --full
+./scripts/run/checks.sh --fix   # Ruff autofix, then gate
+./scripts/run/checks.sh --full  # --fix + verify_stack
 ```
 
 Individual steps:
 
 ```bash
-./scripts/run_ruff.sh
-./scripts/run_pyright.sh
-./scripts/run_tests.sh --coverage
-./scripts/run_mcp_tests.sh
-./scripts/run_ci.sh
+./scripts/run/ruff.sh
+./scripts/run/pyright.sh
+./scripts/run/tests.sh --coverage
+./scripts/run/mcp_tests.sh
+./scripts/audit_deps.sh
 ```
 
 ## Running tests
@@ -86,12 +87,12 @@ Automated tests use [pytest](https://docs.pytest.org/) with [pytest-asyncio](htt
 With `.venv` active:
 
 ```bash
-chmod +x scripts/run_tests.sh   # once, if needed
-./scripts/run_tests.sh
-./scripts/run_tests.sh -m unit
-./scripts/run_tests.sh -m integration
-./scripts/run_tests.sh --coverage
-./scripts/run_tests.sh --coverage -m unit
+chmod +x scripts/run/tests.sh   # once, if needed
+./scripts/run/tests.sh
+./scripts/run/tests.sh -m unit
+./scripts/run/tests.sh -m integration
+./scripts/run/tests.sh --coverage
+./scripts/run/tests.sh --coverage -m unit
 ```
 
 Tests use a PostgreSQL test database and a fixed JWT secret from [`tests/conftest.py`](../tests/conftest.py); they do not use Compose volumes or a host dev database. Default `TEST_DATABASE_URL` uses `POSTGRES_PORT` from `.env` (default `5432`) — ensure PostgreSQL is reachable on `127.0.0.1:${POSTGRES_PORT}` (the infra Compose stack provides this locally).
@@ -113,14 +114,13 @@ See [Testing](architecture.md#testing) for the full test tree, fixtures, and con
 
 ### Coverage (optional)
 
-Requires dev dependencies (`pytest-cov` is included in `.[dev]`). Pass `--coverage` to `run_tests.sh`, or call `run_coverage.sh` directly:
+Requires dev dependencies (`pytest-cov` is included in `.[dev]`). Pass `--coverage` to `run_tests.sh`:
 
 ```bash
-./scripts/run_tests.sh --coverage
-./scripts/run_coverage.sh
+./scripts/run/tests.sh --coverage
 ```
 
-Both run the suite with a terminal report (missed lines) and an HTML report under `htmlcov/`. Extra pytest arguments are forwarded (for example `./scripts/run_tests.sh --coverage -m unit`).
+Runs the suite with a terminal report (missed lines) and an HTML report under `htmlcov/`. Extra pytest arguments are forwarded (for example `./scripts/run/tests.sh --coverage -m unit`).
 
 ## Stack verification
 
@@ -130,13 +130,13 @@ Both run the suite with a terminal report (missed lines) and an HTML report unde
 |----------|--------|------------|
 | Bare-metal PostgreSQL (venv API + infra-only Compose) | — | yes (Valkey + PostgreSQL) |
 | Full-stack Compose (Path B: `docker-compose.infra.yml` + `docker-compose.app.base.yml` + `docker-compose.app.with-infra.yml`) | — | yes |
-| CI parity (once at end) | `./scripts/run_tests.sh --coverage` on PostgreSQL | — |
+| Quality gate (once at end, unless `--skip-coverage`) | `./scripts/run/tests.sh --coverage` on PostgreSQL | — |
 
 Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `POST /auth/login` (seeded `jane` / `changeme`), `GET /todos?limit=5`. The full unit + integration suite runs **once** at the end (same as CI), against the PostgreSQL test database from [`tests/conftest.py`](../tests/conftest.py).
 
 **When to run:** after changes to Compose, container scripts, Alembic, or `DATABASE_URL` wiring; before a demo or release; when you explicitly want all local deployment paths checked.
 
-**When not to run:** routine feature work (use `./scripts/run_tests.sh` instead).
+**When not to run:** routine feature work (use `./scripts/run/tests.sh` instead).
 
 **Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, `API_PORT` free (default `8000`), PostgreSQL on `127.0.0.1:${POSTGRES_PORT}` (default `5432`). Set `POSTGRES_PASSWORD` in `.env`.
 
@@ -151,11 +151,13 @@ Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `P
 
 ### pip-audit
 
-Run CVE audits against all transitive dependencies (no `--no-deps`):
+Audits installed PyPI packages in the active `.venv` (editable local packages such as `fastapi-todos` and `todos-mcp` are skipped). Upgrades `pip` first, then runs `pip-audit -l --skip-editable`:
 
 ```bash
 ./scripts/audit_deps.sh
 ```
+
+Included in `[dev]` dependencies (`pip-audit`). Invoked by the quality gate (`./scripts/run/checks.sh`).
 
 ### uv lockfile (reproducible installs)
 

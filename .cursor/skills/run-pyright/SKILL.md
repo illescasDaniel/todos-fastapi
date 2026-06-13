@@ -1,6 +1,6 @@
 ---
 name: run-pyright
-description: Run basedpyright type checking via run_pyright.sh for src, tests, and MCP. Use when fixing type errors or verifying typed API changes.
+description: Run basedpyright type checking via scripts/run/pyright.sh for src, tests, and MCP. Use when fixing type errors or verifying typed API changes.
 disable-model-invocation: true
 ---
 

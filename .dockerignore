@@ -19,7 +19,7 @@ TODO.txt
 docs/images/
 tools/
 scripts/database/
-scripts/run_*.sh
+scripts/run/
 scripts/reinstall.sh
 scripts/seed.sh
 scripts/migrate.sh

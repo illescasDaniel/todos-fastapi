@@ -527,10 +527,10 @@ From the project root with dev dependencies installed:
 
 ```bash
 pip install -e ".[dev]"
-./scripts/run_tests.sh
-./scripts/run_tests.sh -m unit
-./scripts/run_tests.sh -m integration
-./scripts/run_tests.sh --coverage
+./scripts/run/tests.sh
+./scripts/run/tests.sh -m unit
+./scripts/run/tests.sh -m integration
+./scripts/run/tests.sh --coverage
 ```
 
 Coverage (optional) uses `pytest-cov`; HTML report under `htmlcov/`. The project enforces **90%** line coverage on `todos_app` (`fail_under` in `pyproject.toml`; seeding modules omitted).
