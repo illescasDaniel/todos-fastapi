@@ -26,6 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+	"basedpyright>=1.29",
 	"pytest>=8.0",
 	"pytest-asyncio>=0.24",
 	"pytest-cov>=6.0",
@@ -105,7 +106,13 @@ lines-after-imports = 2
 # --- Type checking (Cursor Pyright / basedpyright) ---
 [tool.basedpyright]
 typeCheckingMode = "strict"
-include = ["src"]
+include = ["src", "tests", "mcp/todos-backend/src", "mcp/todos-backend/tests"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
+extraPaths = ["tests", "mcp/todos-backend/src"]
+reportMissingTypeStubs = false
+executionEnvironments = [
+	{ root = "mcp/todos-backend/src/todos_mcp/tools", reportUnusedFunction = false },
+	{ root = "src" },
+]

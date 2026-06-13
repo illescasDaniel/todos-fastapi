@@ -30,7 +30,9 @@ async def test_add_lowercases_username() -> None:
 	created = await repo.add(_user(username="Jane"))
 
 	assert created.username == "jane"
-	assert (await repo.get_by_username("JANE")).id == created.id
+	found = await repo.get_by_username("JANE")
+	assert found is not None
+	assert found.id == created.id
 
 
 async def test_update_lowercases_username() -> None:
@@ -42,7 +44,9 @@ async def test_update_lowercases_username() -> None:
 	stored = await repo.get_by_id(_USER_ID)
 	assert stored is not None
 	assert stored.username == "janet"
-	assert (await repo.get_by_username("JANET")).id == _USER_ID
+	found = await repo.get_by_username("JANET")
+	assert found is not None
+	assert found.id == _USER_ID
 
 
 async def test_init_lowercases_preloaded_usernames() -> None:
@@ -51,4 +55,6 @@ async def test_init_lowercases_preloaded_usernames() -> None:
 	stored = await repo.get_by_id(_USER_ID)
 	assert stored is not None
 	assert stored.username == "jane"
-	assert (await repo.get_by_username("jane")).id == _USER_ID
+	found = await repo.get_by_username("jane")
+	assert found is not None
+	assert found.id == _USER_ID

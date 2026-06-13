@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from todos_mcp.config import Settings
-from todos_mcp.scripts_runner import _resolve_script, open_api_docs, run_script
+from todos_mcp.scripts_runner import _resolve_script, open_api_docs, run_script  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.fixture
@@ -59,7 +59,10 @@ def test_open_api_docs_success(settings: Settings, monkeypatch: pytest.MonkeyPat
 
 
 def test_open_api_docs_failure(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
-	monkeypatch.setattr("todos_mcp.scripts_runner.webbrowser.open", lambda *_a, **_k: False)
+	def fake_open_fail(*_args: object, **_kwargs: object) -> bool:
+		return False
+
+	monkeypatch.setattr("todos_mcp.scripts_runner.webbrowser.open", fake_open_fail)
 	result = open_api_docs(settings)
 	payload = json.loads(result.to_json())
 	assert payload["ok"] is False

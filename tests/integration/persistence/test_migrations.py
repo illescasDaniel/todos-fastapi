@@ -1,4 +1,5 @@
 import os
+from collections.abc import AsyncIterator
 
 import pytest
 from alembic.script import ScriptDirectory
@@ -22,7 +23,7 @@ _MIGRATION_TEST_URL = os.environ.get(
 
 
 @pytest.fixture
-async def migration_db_url(monkeypatch: pytest.MonkeyPatch) -> str:
+async def migration_db_url(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[str]:
 	monkeypatch.setenv("DATABASE_URL", _MIGRATION_TEST_URL)
 	get_settings.cache_clear()
 	yield _MIGRATION_TEST_URL

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from todos_mcp.config import _load_repo_dotenv, load_settings
+from todos_mcp.config import _load_repo_dotenv, load_settings  # pyright: ignore[reportPrivateUsage]
 
 
 def test_load_repo_dotenv_sets_unset_keys(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

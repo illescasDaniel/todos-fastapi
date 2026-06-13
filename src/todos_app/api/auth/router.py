@@ -15,7 +15,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 	response_model=TokenResponse,
 	responses=OpenAPIResponse.merge(OpenAPIResponse.INVALID_CREDENTIALS),
 )
-@limiter.limit("20/minute")
+@limiter.limit("20/minute")  # pyright: ignore[reportUntypedFunctionDecorator,reportUnknownMemberType]
 async def login(
 	request: Request,
 	body: LoginRequest,

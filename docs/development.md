@@ -13,7 +13,15 @@ With your virtual environment active and development dependencies installed, you
 
 ## Type checking (basedpyright)
 
-[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/` (`pyproject.toml` → `[tool.basedpyright]`). This is a **local developer** check (editor integration or manual `basedpyright` runs) — CI currently runs Ruff and pytest only, not basedpyright. Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test files may use targeted `# pyright: ignore` where pytest fixtures require it.
+[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). This is a **local developer** check — CI currently runs Ruff and pytest only, not basedpyright. Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
+
+From the repo root with `.venv` active:
+
+```bash
+./scripts/run_pyright.sh
+```
+
+The script auto-installs `mcp/todos-backend/` editable when `todos_mcp` is not importable. For MCP-only development with `mcp/todos-backend/.venv`, run `basedpyright` from that directory (see `mcp/todos-backend/pyproject.toml` → `[tool.basedpyright]`).
 
 ### Type-only imports and lazy driver loading
 
@@ -44,6 +52,32 @@ When code must **construct** or **call** a third-party client, import it at the 
 `valkey_user_auth_cache.py` only receives an already-built client, so it uses **`TYPE_CHECKING` only** — no runtime `valkey` import in that module.
 
 Use this split for new infrastructure adapters: **factory / guard module** owns lazy loading; **adapter modules** type against the client with `TYPE_CHECKING` when they do not import the driver themselves.
+
+## Combined quality gate
+
+After substantive changes, run the full local check sequence. Exits on first failure:
+
+```bash
+./scripts/run_checks.sh
+```
+
+Steps (see `scripts/checks/`): Ruff → basedpyright → MCP tests → CI parity (dependency audit + pytest with coverage using CI env vars).
+
+For deployment-path smoke (Compose, bare-metal, HTTP checks — slow):
+
+```bash
+./scripts/run_checks.sh --full
+```
+
+Individual steps:
+
+```bash
+./scripts/run_ruff.sh
+./scripts/run_pyright.sh
+./scripts/run_tests.sh --coverage
+./scripts/run_mcp_tests.sh
+./scripts/run_ci.sh
+```
 
 ## Running tests
 

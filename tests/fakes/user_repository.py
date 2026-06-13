@@ -12,7 +12,7 @@ class FakeUserRepository:
 			for user in users:
 				if user.id is not None:
 					stored = self._stored_user(user, user_id=user.id)
-					self._users[stored.id] = stored
+					self._users[user.id] = stored
 					self._by_username[stored.username] = stored
 
 	@staticmethod

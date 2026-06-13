@@ -72,13 +72,22 @@ This project uses **implicit namespace packages** (PEP 420): layer folders such 
 
 - Generated Python code must use **tabs** for indentation (Ruff enforces this).
 - Run Ruff from the **repository root** via the `ruff-check-format` skill.
-- After making Python code changes, use the `ruff-check-format` skill.
+- After making Python code changes, use the `ruff-check-format` skill (or the full `run-checks` skill after substantive changes).
 
 ## Type checking
 
-- [basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/` (`pyproject.toml` → `[tool.basedpyright]`).
+- [basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`).
+- Run from the repository root via `./scripts/run_pyright.sh` or the `run-pyright` skill.
 - Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test files may use targeted `# pyright: ignore` where pytest fixtures require it.
 - For third-party types used only in annotations, use `TYPE_CHECKING` imports; lazy runtime loading belongs in factory/guard modules — see [docs/development.md#type-only-imports-and-lazy-driver-loading](docs/development.md#type-only-imports-and-lazy-driver-loading).
+
+## Quality gate (after substantive changes)
+
+After substantive code changes, run the combined check script and fix **all** reported issues before considering work done:
+
+- `./scripts/run_checks.sh` or the `run-checks` skill — Ruff → basedpyright → MCP tests → CI parity (audit + pytest with coverage). Exits on first failure.
+- `./scripts/run_checks.sh --full` — same as above, then `./scripts/verify_stack.sh` (deployment-path smoke; slow — use when changing Compose, containers, or DB wiring).
+- Individual steps: `ruff-check-format`, `run-pyright`, `run-tests`, and `./scripts/run_mcp_tests.sh` / `./scripts/run_ci.sh` (see `scripts/checks/`).
 
 ## Testing
 
@@ -97,29 +106,34 @@ When adding or changing behavior, place tests by layer:
 - Set `pytestmark = pytest.mark.unit` or `pytest.mark.integration` on **every** test module.
 - Tests use a PostgreSQL test database from `tests/conftest.py` via Alembic `upgrade head` — they do **not** use Compose volumes.
 - `JWT_SECRET_KEY` is set in `tests/conftest.py`; the suite does not depend on `.env`.
-- After substantive changes, use the `run-tests` skill. Default to `--coverage` when `src/todos_app/` changes (project enforces **90%** line coverage on `todos_app` in `pyproject.toml`).
+- After substantive changes, use the `run-checks` skill (preferred) or `run-tests` with `--coverage` when only tests are needed. Default to `--coverage` when `src/todos_app/` changes (project enforces **90%** line coverage on `todos_app` in `pyproject.toml`).
 
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) on push/PR to `main`:
 
 1. Python **3.14**, `python -m venv .venv`, `pip install -e ".[dev]"`
-2. `./scripts/run_ruff.sh`
-3. `./scripts/run_tests.sh --coverage` with `JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes!`
+2. `./scripts/audit_deps.sh`
+3. `./scripts/run_ruff.sh`
+4. `./scripts/run_tests.sh --coverage` with `JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes!`
+
+Replay locally: `./scripts/run_ci.sh` (or `./scripts/checks/ci.sh`). The `run-checks` skill runs CI parity (audit + tests with CI env) after Ruff, basedpyright, and MCP tests.
 
 CI does not use Podman Compose; Compose is for local full-stack dev only (see `podman-compose` skill).
 
 ## Stack verification (manual only)
 
-Do **not** run `./scripts/verify_stack.sh` after routine code changes — use the `run-tests` skill instead (PostgreSQL test DB, fast).
+Do **not** run `./scripts/verify_stack.sh` after routine code changes — use the `run-checks` skill instead (PostgreSQL test DB, fast).
 
-Run stack verification only when:
+Run stack verification when:
 
 - Changing Compose, container scripts, Alembic, or `DATABASE_URL` wiring
 - The user explicitly asks to validate all local deployment paths
 - Preparing a demo or release and you need bare-metal and full-stack Compose checked
 
-See [docs/development.md#stack-verification](docs/development.md#stack-verification). Targeted runs: `--only postgres`, `--only compose-postgres`, etc.
+Use `./scripts/run_checks.sh --full` to run the quality gate plus stack verification in one command, or `./scripts/verify_stack.sh` alone for targeted runs (`--only postgres`, `--only compose-postgres`, etc.).
+
+See [docs/development.md#stack-verification](docs/development.md#stack-verification).
 
 ## Schema changes (Alembic)
 
@@ -128,7 +142,7 @@ ORM models live under `src/todos_app/infrastructure/persistence/<feature>/orm.py
 1. Edit ORM models.
 2. `./scripts/migrate.sh revision -m "describe change"` — **review** autogenerate output in `alembic/versions/` (host `.venv`; no MCP wrapper for autogenerate).
 3. `db_migrate` MCP tool or `./scripts/migrate.sh` (upgrade head).
-4. Run the `run-tests` skill.
+4. Run the `run-checks` skill (or `run-tests` if only tests are needed).
 
 See [docs/database.md](docs/database.md) for PostgreSQL-specific notes.
 
@@ -151,13 +165,15 @@ User and todo primary keys are **UUID v7** via `domain/ids.new_id()` (not `uuid4
 ## Project skills
 
 Store project-specific Cursor skills under `.cursor/skills/<skill-name>/SKILL.md`.
-Keep shared runnable tooling in repo paths (for example `./scripts/run_ruff.sh`, `./scripts/run_tests.sh`, `./scripts/migrate.sh`) so both humans and agents can execute the same command.
+Keep shared runnable tooling in repo paths (for example `./scripts/run_ruff.sh`, `./scripts/run_pyright.sh`, `./scripts/run_checks.sh`, `./scripts/run_ci.sh`, `./scripts/run_mcp_tests.sh`, `./scripts/run_tests.sh`, `./scripts/migrate.sh`, and step scripts under `./scripts/checks/`) so both humans and agents can execute the same command.
 
 **MCP first:** for stack, database, and API tasks, use [Cursor MCP](#cursor-mcp-prefer-over-shell-skills) when `todos-backend` is enabled. Skills below are fallbacks and cover tasks without MCP wrappers (lint, tests, autogenerate revisions).
 
 | Skill | Wrapper | Delegates to |
 |-------|---------|--------------|
+| `run-checks` | `./.cursor/skills/run-checks/scripts/run.sh` | `./scripts/run_checks.sh` |
 | `ruff-check-format` | `./.cursor/skills/ruff-check-format/scripts/run.sh` | `./scripts/run_ruff.sh` |
+| `run-pyright` | `./.cursor/skills/run-pyright/scripts/run.sh` | `./scripts/run_pyright.sh` |
 | `run-tests` | `./.cursor/skills/run-tests/scripts/run.sh` | `./scripts/run_tests.sh` |
 | `alembic-migrate` | `./.cursor/skills/alembic-migrate/scripts/run.sh` | `./scripts/migrate.sh` |
 | `db-local-ops` | `./.cursor/skills/db-local-ops/scripts/run.sh` | `./scripts/wipe.sh`, `./scripts/seed.sh` |

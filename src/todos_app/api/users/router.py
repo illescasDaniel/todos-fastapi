@@ -28,7 +28,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 	status_code=status.HTTP_201_CREATED,
 	responses=OpenAPIResponse.merge_write(),
 )
-@limiter.limit("10/minute")
+@limiter.limit("10/minute")  # pyright: ignore[reportUntypedFunctionDecorator,reportUnknownMemberType]
 async def create_user(
 	request: Request, user: UserSignup, repo: UserRepositoryDep, hasher: PasswordHasherDep
 ) -> UserResponse:

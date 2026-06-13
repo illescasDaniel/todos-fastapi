@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import httpx
 import pytest
@@ -20,11 +21,11 @@ def client(settings: Settings) -> ApiClient:
 def _patch_async_client(monkeypatch: pytest.MonkeyPatch, transport: httpx.MockTransport) -> None:
 	original_async_client = httpx.AsyncClient
 
-	def patched_async_client(*args, **kwargs):
+	def patched_async_client(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
 		kwargs["transport"] = transport
 		return original_async_client(*args, **kwargs)
 
-	monkeypatch.setattr(httpx, "AsyncClient", patched_async_client)
+	monkeypatch.setattr(httpx, "AsyncClient", patched_async_client)  # pyright: ignore[reportUnknownArgumentType]
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -64,5 +64,10 @@ class ApiClient:
 		if response.is_success:
 			return json.dumps(_success_payload(body, response.status_code), indent=2)
 
-		detail = body.get("detail", body) if isinstance(body, dict) else body
+		detail: Any
+		if isinstance(body, dict):
+			body_dict = cast(dict[str, Any], body)
+			detail = body_dict.get("detail", body)
+		else:
+			detail = body
 		return json.dumps(_error_payload(response.status_code, detail), indent=2)

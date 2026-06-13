@@ -24,10 +24,10 @@ async def test_login_rate_limit_returns_429(client: AsyncClient) -> None:
 	from todos_app.core.rate_limiting import limiter
 
 	# Override the key function to return a deterministic IP for this test only.
-	original_key_func = limiter._key_func  # pyright: ignore[reportAttributeAccessIssue]
-	limiter._key_func = lambda req: "10.99.99.1"  # pyright: ignore[reportAttributeAccessIssue]
+	original_key_func = limiter._key_func  # pyright: ignore[reportPrivateUsage]
+	limiter._key_func = lambda req: "10.99.99.1"  # pyright: ignore[reportPrivateUsage,reportUnknownLambdaType]
 	try:
-		responses = []
+		responses: list[int] = []
 		for _ in range(21):
 			r = await client.post(
 				"/auth/login",
@@ -35,7 +35,7 @@ async def test_login_rate_limit_returns_429(client: AsyncClient) -> None:
 			)
 			responses.append(r.status_code)
 	finally:
-		limiter._key_func = original_key_func  # pyright: ignore[reportAttributeAccessIssue]
+		limiter._key_func = original_key_func  # pyright: ignore[reportPrivateUsage]
 
 	assert 429 in responses, f"Expected a 429 within 21 requests, got: {responses}"
 
@@ -44,14 +44,14 @@ async def test_signup_rate_limit_returns_429(client: AsyncClient) -> None:
 	"""H2: POST /users returns 429 after exceeding 10 requests per minute."""
 	from todos_app.core.rate_limiting import limiter
 
-	original_key_func = limiter._key_func  # pyright: ignore[reportAttributeAccessIssue]
-	limiter._key_func = lambda req: "10.99.99.2"  # pyright: ignore[reportAttributeAccessIssue]
+	original_key_func = limiter._key_func  # pyright: ignore[reportPrivateUsage]
+	limiter._key_func = lambda req: "10.99.99.2"  # pyright: ignore[reportPrivateUsage,reportUnknownLambdaType]
 	try:
-		responses = []
+		responses: list[int] = []
 		for _ in range(11):
 			r = await client.post("/users", json=user_signup_payload())
 			responses.append(r.status_code)
 	finally:
-		limiter._key_func = original_key_func  # pyright: ignore[reportAttributeAccessIssue]
+		limiter._key_func = original_key_func  # pyright: ignore[reportPrivateUsage]
 
 	assert 429 in responses, f"Expected a 429 within 11 requests, got: {responses}"
