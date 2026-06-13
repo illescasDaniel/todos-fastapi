@@ -145,14 +145,15 @@ async def test_admin_update_missing_user_returns_404(client: AsyncClient) -> Non
 	assert response.status_code == 404
 
 
-async def test_duplicate_email_returns_409(client: AsyncClient) -> None:
+async def test_duplicate_email_returns_400(client: AsyncClient) -> None:
+	"""M2: duplicate signup returns 400 with generic message to prevent account enumeration."""
 	payload = user_signup_payload()
 	first = await client.post("/users", json=payload)
 	assert first.status_code == 201
 
 	duplicate = user_signup_payload(email=payload["email"])
 	second = await client.post("/users", json=duplicate)
-	assert second.status_code == 409
+	assert second.status_code == 400
 	detail = second.json()["detail"][0]
-	assert detail["msg"] == "Email or username already registered"
+	assert detail["msg"] == "Unable to create account"
 	assert "ctx" not in detail or detail.get("ctx") is None

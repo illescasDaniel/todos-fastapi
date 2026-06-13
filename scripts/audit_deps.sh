@@ -19,4 +19,4 @@ trap 'rm -f "$REQ_FILE"' EXIT
 # fastapi-todos is installed editable for development and is not published on PyPI.
 pip freeze | grep -viE 'fastapi-todos' >"$REQ_FILE"
 
-pip-audit --no-deps -r "$REQ_FILE"
+pip-audit -r "$REQ_FILE"

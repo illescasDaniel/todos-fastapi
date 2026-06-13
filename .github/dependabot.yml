@@ -8,3 +8,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # H5/H6: Keep Docker image digests and GitHub Actions SHAs up to date.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

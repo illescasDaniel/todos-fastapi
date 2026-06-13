@@ -115,6 +115,41 @@ podman compose -f docker-compose.infra.yml -f docker-compose.app.base.yml -f doc
 
 ## Staging and production (Path C)
 
+### Running migrations as a pre-deploy step (recommended for production)
+
+By default, `RUN_MIGRATIONS=true` runs Alembic on every container start. This is safe for
+single-replica deployments but can cause issues under multi-replica or zero-downtime rolling
+deployments (concurrent migration attempts, table locks).
+
+For production, set `RUN_MIGRATIONS=false` in `.env` and run migrations as a separate
+one-shot step before rolling out the new image:
+
+```bash
+# Run migrations before starting/updating the app container
+podman run --rm \
+  --env-file .env \
+  -e RUN_MIGRATIONS=true \
+  todos-api true   # exits after migrations; 'true' is a no-op CMD
+
+# Then deploy the app without re-running migrations
+./scripts/container/deploy.sh  # uses RUN_MIGRATIONS=false from .env
+```
+
+Or in a CI/CD pipeline (e.g. GitHub Actions):
+
+```bash
+# Pre-deploy migration step
+podman run --rm \
+  -e JWT_SECRET_KEY="$JWT_SECRET_KEY" \
+  -e DATABASE_URL="$DATABASE_URL" \
+  -e VALKEY_URL="$VALKEY_URL" \
+  -e RUN_MIGRATIONS=true \
+  todos-api true
+
+# Deploy step
+./scripts/container/deploy.sh
+```
+
 Use the **same image** built from this repository. Differences are only env vars:
 
 1. **`JWT_SECRET_KEY`** — cryptographically random (at least 32 characters), unique per environment; never reuse local dev secrets or template placeholders from [`.env.production.example`](../.env.production.example). The container entrypoint rejects empty, placeholder, and migration-only values.

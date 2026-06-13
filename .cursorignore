@@ -1,0 +1,20 @@
+# Secrets and credentials — prevent AI context injection
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Virtual environments
+.venv/
+mcp/todos-backend/.venv/
+mcp/todos-backend/.venv-audit/
+
+# Generated files
+*.pyc
+__pycache__/
+.coverage
+htmlcov/

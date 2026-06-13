@@ -26,15 +26,23 @@ class Settings(BaseSettings):
 	model_config = SettingsConfigDict(env_file=_env_file or None, extra="ignore")
 
 	app_env: str = "local"
+	# DATABASE_URL defaults to a local dev fallback (only valid when app_env == "local").
+	# For non-local environments, DATABASE_URL must be explicitly provided via .env or the
+	# environment — the changeme fallback is rejected by validate_settings below.
 	database_url: str = "postgresql+asyncpg://todos:changeme@127.0.0.1:5432/todos"
 	jwt_secret_key: str
 	jwt_algorithm: str = "HS256"
 	jwt_expire_minutes: int = 60
+	jwt_issuer: str = "todos-api"
+	jwt_audience: str = "todos-client"
+	# VALKEY_URL must include credentials when Valkey runs with --requirepass.
+	# Format: valkey://:PASSWORD@127.0.0.1:6379/0  (local)
+	#         rediss://:PASSWORD@host:6380/0        (production TLS)
 	valkey_url: str = "valkey://127.0.0.1:6379/0"
 	auth_user_cache_ttl_seconds: int = 120
 
 	@model_validator(mode="after")
-	def validate_jwt_configuration(self) -> Self:
+	def validate_settings(self) -> Self:
 		normalized = self.jwt_secret_key.strip().lower()
 		if len(self.jwt_secret_key) < MIN_JWT_SECRET_LENGTH:
 			msg = f"JWT_SECRET_KEY must be at least {MIN_JWT_SECRET_LENGTH} characters"
@@ -48,6 +56,11 @@ class Settings(BaseSettings):
 			raise ValueError("JWT_SECRET_KEY must not use a placeholder or weak value")
 		if self.jwt_algorithm != "HS256":
 			raise ValueError("JWT_ALGORITHM must be HS256")
+		if self.app_env != "local" and "changeme" in self.database_url:
+			raise ValueError(
+				"DATABASE_URL must be explicitly set in non-local environments "
+				"(the changeme fallback is not allowed outside local dev)"
+			)
 		return self
 
 	def is_local(self) -> bool:

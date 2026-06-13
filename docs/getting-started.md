@@ -89,9 +89,10 @@ Copy [`.env.example`](../.env.example) to `.env` in the project root and set at 
 
 - `JWT_SECRET_KEY` — required; generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
 - `POSTGRES_PASSWORD` — required for the Compose PostgreSQL service
+- `VALKEY_PASSWORD` — required for the Compose Valkey service; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Include it in `VALKEY_URL` as `valkey://:YOUR_VALKEY_PASSWORD@127.0.0.1:${VALKEY_PORT}/0`
 - `API_PORT`, `POSTGRES_PORT`, `VALKEY_PORT` — local host ports (defaults `8000`, `5432`, `6379`; see [`.env.example`](../.env.example))
 - `DATABASE_URL` — `postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT}/todos` (use the same password as `POSTGRES_PASSWORD`)
-- `VALKEY_URL` — optional; defaults to `valkey://127.0.0.1:${VALKEY_PORT}/0` (`./scripts/start.sh` ensures Valkey infra is running)
+- `VALKEY_URL` — include the Valkey password: `valkey://:YOUR_VALKEY_PASSWORD@127.0.0.1:${VALKEY_PORT}/0`
 - `APP_ENV` — optional; `local` (default), `staging`, or `production`
 
 **2. Create database tables**
@@ -132,7 +133,7 @@ chmod +x scripts/start.sh   # once, if needed
 
 | Step | Command |
 |------|---------|
-| Configure `.env` | Copy `.env.example`, set `JWT_SECRET_KEY` and `POSTGRES_PASSWORD`, align `DATABASE_URL` |
+| Configure `.env` | Copy `.env.example`, set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `VALKEY_PASSWORD`, align `DATABASE_URL` and `VALKEY_URL` with passwords |
 | Create tables | `./scripts/migrate.sh` |
 | Demo data (optional) | `./scripts/seed.sh` |
 | Run API | `./scripts/start.sh` |
@@ -196,10 +197,11 @@ Prod-like local development: same infra as Path A plus an app container. Require
 
 **1. Configure `.env`**
 
-Copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY` and `POSTGRES_PASSWORD`. Set `DATABASE_URL` to PostgreSQL on `127.0.0.1`:
+Copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, and `VALKEY_PASSWORD`. Set `DATABASE_URL` to PostgreSQL on `127.0.0.1` and `VALKEY_URL` with the Valkey password:
 
 ```
 DATABASE_URL=postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:5432/todos
+VALKEY_URL=valkey://:YOUR_VALKEY_PASSWORD@127.0.0.1:6379/0
 ```
 
 Path B rewrites the host to `postgres` inside the app container.

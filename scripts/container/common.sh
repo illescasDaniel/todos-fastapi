@@ -52,16 +52,29 @@ require_env_file() {
 	exit 1
 }
 
+# M8: Safe .env parser — only exports simple KEY=value lines, ignoring comments and
+# shell syntax. Prevents arbitrary code execution from a malicious or malformed .env file.
+_safe_source_env() {
+	local env_file="$1"
+	local key value
+	while IFS='=' read -r key value; do
+		[[ "$key" =~ ^[[:space:]]*# ]] && continue
+		[[ -z "$key" ]] && continue
+		key="${key## }"
+		key="${key%% }"
+		if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+			export "$key"="$value"
+		fi
+	done < "$env_file"
+}
+
 load_compose_env() {
 	local saved_database_url="${DATABASE_URL:-}"
 	local saved_valkey_url="${VALKEY_URL:-}"
 	# shellcheck source=scripts/ports.sh
 	source "$PROJECT_ROOT/scripts/ports.sh"
 	if [[ -f "$PROJECT_ROOT/.env" ]]; then
-		set -a
-		# shellcheck source=/dev/null
-		source "$PROJECT_ROOT/.env"
-		set +a
+		_safe_source_env "$PROJECT_ROOT/.env"
 	fi
 	if [[ -n "$saved_database_url" ]]; then
 		export DATABASE_URL="$saved_database_url"
@@ -81,8 +94,8 @@ load_database_url() {
 		grep -E '^[[:space:]]*DATABASE_URL=' .env | grep -v '^[[:space:]]*#' | tail -n 1 || true
 	)"
 	if [[ -z "$line" ]]; then
-		DATABASE_URL="postgresql+asyncpg://todos:changeme@127.0.0.1:${POSTGRES_PORT:-5432}/todos"
-		return 0
+		echo "ERROR: DATABASE_URL not set and not found in .env. Set DATABASE_URL in .env." >&2
+		exit 1
 	fi
 	DATABASE_URL="${line#DATABASE_URL=}"
 	DATABASE_URL="${DATABASE_URL#"${DATABASE_URL%%[![:space:]]*}"}"
@@ -134,7 +147,11 @@ export_compose_database_url() {
 
 export_compose_valkey_url() {
 	if valkey_url_uses_local_host "$VALKEY_URL"; then
-		COMPOSE_VALKEY_URL="valkey://valkey:6379/0"
+		if [[ -n "${VALKEY_PASSWORD:-}" ]]; then
+			COMPOSE_VALKEY_URL="valkey://:${VALKEY_PASSWORD}@valkey:6379/0"
+		else
+			COMPOSE_VALKEY_URL="valkey://valkey:6379/0"
+		fi
 	else
 		COMPOSE_VALKEY_URL="$VALKEY_URL"
 	fi

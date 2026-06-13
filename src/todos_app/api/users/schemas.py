@@ -17,9 +17,12 @@ from todos_app.domain.users.field_limits import (
 UserRole = Literal["user", "admin"]
 
 
+_USERNAME_MIN_LENGTH = 2
+
+
 class _UserProfileWithRole(BaseModel):
 	email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
-	username: str = Field(max_length=USERNAME_MAX_LENGTH)
+	username: str = Field(min_length=_USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH)
 	first_name: str = Field(max_length=FIRST_NAME_MAX_LENGTH)
 	last_name: str = Field(max_length=LAST_NAME_MAX_LENGTH)
 	role: UserRole
@@ -42,7 +45,7 @@ class UserSignup(BaseModel):
 	)
 
 	email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
-	username: str = Field(max_length=USERNAME_MAX_LENGTH)
+	username: str = Field(min_length=_USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH)
 	first_name: str = Field(max_length=FIRST_NAME_MAX_LENGTH)
 	last_name: str = Field(max_length=LAST_NAME_MAX_LENGTH)
 	password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
@@ -64,14 +67,18 @@ class UserSelfReplace(BaseModel):
 	)
 
 	email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
-	username: str = Field(max_length=USERNAME_MAX_LENGTH)
+	username: str = Field(min_length=_USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH)
 	first_name: str = Field(max_length=FIRST_NAME_MAX_LENGTH)
 	last_name: str = Field(max_length=LAST_NAME_MAX_LENGTH)
 	password: str | None = Field(
 		default=None,
 		min_length=PASSWORD_MIN_LENGTH,
 		max_length=PASSWORD_MAX_LENGTH,
-		description="Omit to keep the current password.",
+		description="New password. Requires current_password when set.",
+	)
+	current_password: str | None = Field(
+		default=None,
+		description="Required when changing password (step-up auth).",
 	)
 
 
@@ -79,13 +86,18 @@ class UserSelfPatch(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
 	email: EmailStr | None = Field(default=None, max_length=EMAIL_MAX_LENGTH)
-	username: str | None = Field(default=None, max_length=USERNAME_MAX_LENGTH)
+	username: str | None = Field(default=None, min_length=_USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH)
 	first_name: str | None = Field(default=None, max_length=FIRST_NAME_MAX_LENGTH)
 	last_name: str | None = Field(default=None, max_length=LAST_NAME_MAX_LENGTH)
 	password: str | None = Field(
 		default=None,
 		min_length=PASSWORD_MIN_LENGTH,
 		max_length=PASSWORD_MAX_LENGTH,
+		description="New password. Requires current_password when set.",
+	)
+	current_password: str | None = Field(
+		default=None,
+		description="Required when changing password (step-up auth).",
 	)
 
 
@@ -120,7 +132,7 @@ class UserAdminPatch(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
 	email: EmailStr | None = Field(default=None, max_length=EMAIL_MAX_LENGTH)
-	username: str | None = Field(default=None, max_length=USERNAME_MAX_LENGTH)
+	username: str | None = Field(default=None, min_length=_USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH)
 	first_name: str | None = Field(default=None, max_length=FIRST_NAME_MAX_LENGTH)
 	last_name: str | None = Field(default=None, max_length=LAST_NAME_MAX_LENGTH)
 	password: str | None = Field(

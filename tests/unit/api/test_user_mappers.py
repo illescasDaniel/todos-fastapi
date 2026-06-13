@@ -9,6 +9,7 @@ from todos_app.api.users.schemas import (
 	UserSelfReplace,
 	UserSignup,
 )
+from todos_app.application.errors import CurrentPasswordInvalidError, CurrentPasswordRequiredError
 from todos_app.domain.users.entity import User
 
 
@@ -39,6 +40,7 @@ def existing_user() -> User:
 		hashed_password="hashed:old",
 		is_active=True,
 		role="user",
+		token_version=0,
 	)
 
 
@@ -90,9 +92,43 @@ def test_apply_user_self_replace_hashes_new_password(
 		first_name="Jane",
 		last_name="Smith",
 		password="newsecret",
+		current_password="old",
 	)
 	updated = mappers.apply_user_self_replace(existing_user, body, hasher)
 	assert updated.hashed_password == "hashed:newsecret"
+
+
+def test_apply_user_self_replace_requires_current_password(
+	existing_user: User,
+	hasher: StubPasswordHasher,
+) -> None:
+	"""M3: missing current_password raises CurrentPasswordRequiredError."""
+	body = UserSelfReplace(
+		email="jane@example.com",
+		username="jane",
+		first_name="Jane",
+		last_name="Smith",
+		password="newsecret",
+	)
+	with pytest.raises(CurrentPasswordRequiredError):
+		mappers.apply_user_self_replace(existing_user, body, hasher)
+
+
+def test_apply_user_self_replace_rejects_wrong_current_password(
+	existing_user: User,
+	hasher: StubPasswordHasher,
+) -> None:
+	"""M3: wrong current_password raises CurrentPasswordInvalidError."""
+	body = UserSelfReplace(
+		email="jane@example.com",
+		username="jane",
+		first_name="Jane",
+		last_name="Smith",
+		password="newsecret",
+		current_password="wrongpassword",
+	)
+	with pytest.raises(CurrentPasswordInvalidError):
+		mappers.apply_user_self_replace(existing_user, body, hasher)
 
 
 def test_apply_user_admin_replace_updates_role_and_active(
@@ -120,8 +156,15 @@ def test_apply_user_patch_partial_fields(existing_user: User, hasher: StubPasswo
 
 
 def test_apply_user_patch_hashes_password_when_set(existing_user: User, hasher: StubPasswordHasher) -> None:
-	updated = mappers.apply_user_patch(existing_user, {"password": "newsecret"}, hasher)
+	"""M3: patch requires current_password when changing password."""
+	updated = mappers.apply_user_patch(existing_user, {"password": "newsecret", "current_password": "old"}, hasher)
 	assert updated.hashed_password == "hashed:newsecret"
+
+
+def test_apply_user_patch_raises_without_current_password(existing_user: User, hasher: StubPasswordHasher) -> None:
+	"""M3: patch without current_password raises CurrentPasswordRequiredError."""
+	with pytest.raises(CurrentPasswordRequiredError):
+		mappers.apply_user_patch(existing_user, {"password": "newsecret"}, hasher)
 
 
 def test_self_patch_fields_excludes_unset() -> None:

@@ -12,3 +12,4 @@ class User:
 	hashed_password: str
 	is_active: bool
 	role: str
+	token_version: int = 0

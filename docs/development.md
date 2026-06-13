@@ -113,4 +113,25 @@ Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `P
 ./scripts/verify_stack.sh --skip-coverage         # skip final coverage gate
 ```
 
+## Dependency auditing and lockfiles
+
+### pip-audit
+
+Run CVE audits against all transitive dependencies (no `--no-deps`):
+
+```bash
+./scripts/audit_deps.sh
+```
+
+### uv lockfile (reproducible installs)
+
+If you have [`uv`](https://github.com/astral-sh/uv) installed you can generate a lockfile for reproducible installs:
+
+```bash
+uv lock          # generate / refresh uv.lock
+uv sync --frozen # install exact pinned versions
+```
+
+`uv.lock` is committed to the repository and should be kept up to date when dependencies change. It is **not** in `.gitignore`.
+
 ← [Project README](../README.md)

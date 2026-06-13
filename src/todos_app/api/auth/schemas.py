@@ -20,7 +20,7 @@ class LoginRequest(BaseModel):
 		},
 	)
 
-	username: str = Field(max_length=USERNAME_MAX_LENGTH)
+	username: str = Field(min_length=2, max_length=USERNAME_MAX_LENGTH)
 	password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
 

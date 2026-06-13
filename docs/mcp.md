@@ -131,16 +131,27 @@ Responses are JSON strings: `{"ok": true, "status": 200, "data": ...}` on succes
 
 ### Lifecycle tools
 
+#### Read-only / safe
+
 | Tool | Action |
 |------|--------|
 | `stack_health` | `curl` API `/health` |
 | `stack_start_host` | Background `./scripts/start.sh` (Path A) |
 | `stack_stop_host` | Stop MCP-spawned host process only |
 | `stack_compose_up` | `./scripts/container/up.sh` (Path B) |
-| `stack_compose_down` | `./scripts/container/down.sh` |
+| `stack_compose_down` | `./scripts/container/down.sh` (without `remove=true`) |
 | `db_migrate` | `./scripts/migrate.sh` |
-| `db_seed` | `./scripts/seed.sh` (needs `APP_ENV=local`) |
-| `db_wipe` | `./scripts/wipe.sh --yes` (**destructive**) |
+
+#### Destructive (require `MCP_ALLOW_DESTRUCTIVE=true`)
+
+> **Warning:** These tools modify or destroy local data and are disabled by default.
+> Set `MCP_ALLOW_DESTRUCTIVE=true` in the MCP server env to enable them.
+
+| Tool | Action |
+|------|--------|
+| `db_seed` | `./scripts/seed.sh` — inserts demo data (needs `APP_ENV=local`) |
+| `db_wipe` | `./scripts/wipe.sh --yes` — **destroys all local DB volumes** |
+| `stack_compose_down` with `remove=true` | Removes compose volumes |
 
 ### Example agent prompts
 
@@ -155,8 +166,17 @@ Responses are JSON strings: `{"ok": true, "status": 200, "data": ...}` on succes
 | `TODOS_API_BASE_URL` | `http://127.0.0.1:${API_PORT}` | API base URL (no trailing slash); built from `API_HOST` + `API_PORT` when unset |
 | `API_PORT` | `8000` | Host API port (used when `TODOS_API_BASE_URL` is unset) |
 | `TODOS_REPO_ROOT` | Auto-detected from package path | Working directory for lifecycle scripts; omit in `.cursor/mcp.json` unless auto-detect fails |
+| `MCP_ALLOW_DESTRUCTIVE` | _(unset — disabled)_ | Set to `true` to enable destructive lifecycle tools (`db_wipe`, `db_seed`, `stack_compose_down --remove`) |
+| `MCP_ALLOW_REMOTE_API` | _(unset — loopback only)_ | Set to `true` to allow `TODOS_API_BASE_URL` to point at non-loopback hosts (disables SSRF guard) |
 
 Set in `.cursor/mcp.json` under `env`, or in the shell when running manually. The committed config omits `TODOS_REPO_ROOT` because auto-detect works when the MCP package is installed from `mcp/todos-backend/`.
+
+### Security defaults
+
+- **Destructive tools are off by default.** `db_wipe`, `db_seed`, and `stack_compose_down --remove` return an error unless `MCP_ALLOW_DESTRUCTIVE=true` is set. Do **not** set this in `.cursor/mcp.json` for shared or CI environments.
+- **SSRF guard is on by default.** `TODOS_API_BASE_URL` is validated at startup; only loopback addresses (`127.0.0.1`, `localhost`, `::1`) are allowed unless `MCP_ALLOW_REMOTE_API=true`.
+- **Subprocesses inherit a minimal environment.** Only variables needed by the shell scripts are forwarded; secrets such as `JWT_SECRET_KEY` are not passed to child processes.
+- **Bearer token lifetime.** The session token is stored in process memory and cleared on shutdown via `atexit`. When passing `access_token` explicitly in tool arguments, note that the value appears in agent call logs — prefer `auth_login` once and let the session store handle it.
 
 ## OpenAPI snapshot
 

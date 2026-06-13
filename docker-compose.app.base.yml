@@ -10,15 +10,27 @@ services:
     ports:
       - "${COMPOSE_APP_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
     env_file:
+      # NOTE: For production, prefer injecting only required vars via your orchestrator's
+      # secrets manager (Kubernetes secrets, Podman secrets, etc.) rather than loading the
+      # whole .env file. This file is used for local and single-host deployments only.
       - .env
     environment:
       DATABASE_URL: ${COMPOSE_DATABASE_URL}
       VALKEY_URL: ${COMPOSE_VALKEY_URL}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M

@@ -8,6 +8,9 @@ pytestmark = pytest.mark.unit
 _VALID_SECRET = "test-secret-key-for-pytest-suite-32bytes!"
 
 
+_PROD_DB_URL = "postgresql+asyncpg://todos:securepassword@prod.example.com:5432/todos"
+
+
 def test_settings_helpers() -> None:
 	settings = Settings(jwt_secret_key=_VALID_SECRET, app_env="local")
 	assert settings.is_local() is True
@@ -16,12 +19,12 @@ def test_settings_helpers() -> None:
 	assert settings.exposes_error_details() is True
 	assert settings.exposes_api_docs() is True
 
-	settings = Settings(jwt_secret_key=_VALID_SECRET, app_env="production")
+	settings = Settings(jwt_secret_key=_VALID_SECRET, app_env="production", database_url=_PROD_DB_URL)
 	assert settings.is_production() is True
 	assert settings.exposes_error_details() is False
 	assert settings.exposes_api_docs() is False
 
-	settings = Settings(jwt_secret_key=_VALID_SECRET, app_env="staging")
+	settings = Settings(jwt_secret_key=_VALID_SECRET, app_env="staging", database_url=_PROD_DB_URL)
 	assert settings.is_staging() is True
 	assert settings.exposes_error_details() is False
 	assert settings.exposes_api_docs() is False

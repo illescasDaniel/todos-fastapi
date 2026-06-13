@@ -18,6 +18,7 @@ dependencies = [
 	"greenlet>=3.5.1",
 	"pydantic>=2.0.0",
 	"PyJWT>=2.8.0",
+	"slowapi>=0.1.9",
 	"sqlalchemy>=2.0.50",
 	"uvicorn>=0.30.0",
 	"valkey>=6.1",
@@ -71,7 +72,9 @@ indent-style = "tab"
 # F = Pyflakes (Finds unused imports/variables)
 # I = isort (Sorts imports)
 # E = pycodestyle errors
-select = ['F', 'I', 'E']
+# S = flake8-bandit (security)
+# B = flake8-bugbear (likely bugs and design issues)
+select = ['F', 'I', 'E', 'S', 'B']
 # Allow fixing for all enabled rules (imports will be removed/sorted automatically)
 fixable = ['ALL']
 # --- RUFF end ---
@@ -83,6 +86,21 @@ lines-after-imports = 2
 
 [tool.ruff.lint.per-file-ignores]
 "tests/conftest.py" = ["E402"]
+# assert, password fixtures, secret strings, and long lines are expected in test code
+"tests/**" = ["S101", "S105", "S106", "E501"]
+"mcp/todos-backend/tests/**" = ["S101", "S105", "S106", "S108"]
+"scripts/**" = ["S603", "S607"]
+# FastAPI uses Query/Depends in default args — B008 is a false positive in routers
+"src/todos_app/api/todos/router.py" = ["B008"]
+# assert isinstance() in exception handlers is a deliberate type narrowing pattern
+"src/todos_app/core/exceptions.py" = ["S101"]
+# String constants named INVALID_TOKEN / token_type are not passwords
+"src/todos_app/core/http_errors.py" = ["S105"]
+"src/todos_app/api/auth/schemas.py" = ["S105"]
+# main.py intentionally binds to 0.0.0.0 for container deployments; assert callable is a type guard
+"src/todos_app/main.py" = ["S101", "S104", "E501"]
+# Pre-existing long function signature; cannot be broken up without changing the API
+"src/todos_app/api/users/router.py" = ["E501"]
 
 # --- Type checking (Cursor Pyright / basedpyright) ---
 [tool.basedpyright]

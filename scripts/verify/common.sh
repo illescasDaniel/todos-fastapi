@@ -2,7 +2,8 @@
 
 VERIFY_API_HOST="${VERIFY_API_HOST:-127.0.0.1}"
 VERIFY_JWT_SECRET="${VERIFY_JWT_SECRET:-test-secret-key-for-verify-stack-32bytes!}"
-VERIFY_POSTGRES_PASSWORD="${VERIFY_POSTGRES_PASSWORD:-changeme}"
+# M6: No changeme default — VERIFY_POSTGRES_PASSWORD must be set explicitly or match .env
+VERIFY_POSTGRES_PASSWORD="${VERIFY_POSTGRES_PASSWORD:-}"
 
 VERIFY_SUMMARY_NAMES=()
 VERIFY_SUMMARY_PYTEST=()
@@ -30,10 +31,16 @@ verify_load_ports() {
 	# shellcheck source=scripts/ports.sh
 	source "${PROJECT_ROOT}/scripts/ports.sh"
 	if [[ -f "${PROJECT_ROOT:-}/.env" ]]; then
-		set -a
-		# shellcheck source=/dev/null
-		source "$PROJECT_ROOT/.env"
-		set +a
+		local key value
+		while IFS='=' read -r key value; do
+			[[ "$key" =~ ^[[:space:]]*# ]] && continue
+			[[ -z "$key" ]] && continue
+			key="${key## }"
+			key="${key%% }"
+			if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+				export "$key"="$value"
+			fi
+		done < "${PROJECT_ROOT}/.env"
 	fi
 	VERIFY_API_PORT="${VERIFY_API_PORT:-$API_PORT}"
 	export VERIFY_API_PORT
@@ -44,7 +51,11 @@ verify_apply_defaults() {
 	export APP_ENV=local
 	export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$VERIFY_JWT_SECRET}"
 	export VALKEY_URL="${VALKEY_URL:-valkey://127.0.0.1:${VALKEY_PORT}/0}"
-	export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$VERIFY_POSTGRES_PASSWORD}"
+	if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
+		echo "ERROR: POSTGRES_PASSWORD not set. Set it in .env or export POSTGRES_PASSWORD." >&2
+		exit 1
+	fi
+	export POSTGRES_PASSWORD
 }
 
 verify_port_available() {

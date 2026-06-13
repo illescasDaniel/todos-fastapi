@@ -28,14 +28,14 @@ async def get_current_user(
 ) -> AuthenticatedUser:
 	if credentials is None or credentials.scheme.lower() != "bearer":
 		raise _unauthorized()
-	token_user = verifier.decode(credentials.credentials)
-	if token_user is None:
+	decoded = verifier.decode(credentials.credentials)
+	if decoded is None:
 		raise _unauthorized()
-	cached_user = await auth_cache.get_active_user(token_user.user_id)
-	if cached_user is not None:
-		return cached_user
-	db_user = await repo.get_by_id(token_user.user_id)
+	# Always fetch from DB to get fresh role/is_active (M5) and verify token_version (H1).
+	db_user = await repo.get_by_id(decoded.user_id)
 	if db_user is None or db_user.id is None or not db_user.is_active:
+		raise _unauthorized()
+	if db_user.token_version != decoded.token_version:
 		raise _unauthorized()
 	auth_user = AuthenticatedUser(
 		user_id=db_user.id,

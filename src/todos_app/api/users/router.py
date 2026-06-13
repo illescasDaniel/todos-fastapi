@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Request, status
 
 from todos_app.api.openapi_responses import OpenAPIResponse
 from todos_app.api.users import mappers
@@ -15,6 +15,7 @@ from todos_app.api.users.schemas import (
 from todos_app.application import users as user_use_cases
 from todos_app.core.auth import CurrentUserDep
 from todos_app.core.dependencies import PasswordHasherDep, UserAuthCacheDep, UserRepositoryDep
+from todos_app.core.rate_limiting import limiter
 from todos_app.domain.auth.authorization import require_admin
 
 
@@ -27,7 +28,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
 	status_code=status.HTTP_201_CREATED,
 	responses=OpenAPIResponse.merge_write(),
 )
-async def create_user(user: UserSignup, repo: UserRepositoryDep, hasher: PasswordHasherDep) -> UserResponse:
+@limiter.limit("10/minute")
+async def create_user(
+	request: Request, user: UserSignup, repo: UserRepositoryDep, hasher: PasswordHasherDep
+) -> UserResponse:
 	created_user = await user_use_cases.create_user(
 		mappers.signup_to_entity(user, hasher),
 		repo=repo,

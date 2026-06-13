@@ -1,20 +1,34 @@
 # Shared database helpers for scripts/start.sh, migrate.sh, seed.sh, wipe.sh.
 # Source from bash after PROJECT_ROOT is set.
 
+_safe_source_env() {
+	local env_file="$1"
+	local key value
+	while IFS='=' read -r key value; do
+		[[ "$key" =~ ^[[:space:]]*# ]] && continue
+		[[ -z "$key" ]] && continue
+		key="${key## }"
+		key="${key%% }"
+		if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+			export "$key"="$value"
+		fi
+	done < "$env_file"
+}
+
 load_database_url() {
 	local url_override="${DATABASE_URL:-}"
 	# shellcheck source=scripts/ports.sh
 	source "$DATABASE_SCRIPTS_DIR/../ports.sh"
 	if [[ -f "$PROJECT_ROOT/.env" ]]; then
-		set -a
-		# shellcheck source=/dev/null
-		source "$PROJECT_ROOT/.env"
-		set +a
+		_safe_source_env "$PROJECT_ROOT/.env"
 	fi
 	if [[ -n "$url_override" ]]; then
 		DATABASE_URL="$url_override"
 	else
-		DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://todos:changeme@127.0.0.1:${POSTGRES_PORT}/todos}"
+		if [[ -z "${DATABASE_URL:-}" ]]; then
+			echo "ERROR: DATABASE_URL not set and no .env found. Set DATABASE_URL in .env." >&2
+			exit 1
+		fi
 	fi
 }
 
