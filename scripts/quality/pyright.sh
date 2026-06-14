@@ -17,10 +17,10 @@ done
 
 lib_require_venv
 lib_activate_venv
-lib_ensure_mcp_installed
-
 if [[ "${OUTPUT_JSON}" == true ]]; then
+	lib_ensure_mcp_installed >&2
 	basedpyright --outputjson
 else
+	lib_ensure_mcp_installed
 	basedpyright
 fi

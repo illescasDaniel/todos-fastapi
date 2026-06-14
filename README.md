@@ -56,7 +56,7 @@ cp .env.example .env   # set JWT_SECRET_KEY, POSTGRES_PASSWORD, POSTGRES_USER, P
 
 Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/database/wipe.sh` removes containers and volumes for a full reset; `./scripts/database/migrate.sh` and `./scripts/database/seed.sh` work the same for host-app and full-stack paths.
 
-Open `http://localhost:${API_PORT}/docs` for interactive API docs (local environment only; `API_PORT` from `config/ports.env`).
+> **OpenAPI UI** — after `./scripts/start.sh`, open `http://127.0.0.1:${API_PORT}/docs` (`API_PORT` from [`config/ports.env`](config/ports.env)). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
 
 ### Cursor MCP (agent tools)
 
@@ -67,9 +67,6 @@ A separate MCP server under [`mcp/todos-backend/`](mcp/todos-backend/) lets Curs
 3. Start the API (`./scripts/start.sh`), then try `health_check` and `auth_login` in Agent chat.
 
 The MCP uses its **own** `.venv` in `mcp/todos-backend/` (not global Python, not the API venv). See [docs/mcp.md](docs/mcp.md).
-
-<!-- Screenshot placeholder: add docs/images/swagger_ui.png and uncomment the line below -->
-<!-- ![OpenAPI docs](docs/images/swagger_ui.png) -->
 
 ### Podman Compose — Path B (local full stack)
 

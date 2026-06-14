@@ -1,10 +1,10 @@
+# shellcheck shell=bash
 # Shared Podman Compose helpers for scripts/container/*.sh (source from scripts/container/internal/).
 # Callers must set SCRIPT_DIR, then: source common.sh && cd "$PROJECT_ROOT"
 
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 COMPOSE_FILE_ARGS=()
-COMPOSE_STACK_MODE=""
 DATABASE_URL=""
 COMPOSE_DATABASE_URL=""
 VALKEY_URL=""
@@ -121,12 +121,10 @@ note_compose_host_override() {
 }
 
 container_set_compose_mode_local() {
-	COMPOSE_STACK_MODE=local
 	COMPOSE_FILE_ARGS=(-f docker-compose.infra.yml -f docker-compose.app.base.yml -f docker-compose.app.with-infra.yml)
 }
 
 container_set_compose_mode_prod() {
-	COMPOSE_STACK_MODE=prod
 	COMPOSE_FILE_ARGS=(-f docker-compose.app.base.yml)
 }
 

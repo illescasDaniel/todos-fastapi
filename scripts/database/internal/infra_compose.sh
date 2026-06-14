@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared docker-compose.infra.yml helpers for infra-only Podman services.
 # Expects PROJECT_ROOT.
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Ensure PostgreSQL and Valkey are ready (Compose up when needed).
 # Source after common.sh; requires PROJECT_ROOT and DATABASE_SCRIPTS_DIR.
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # PostgreSQL Podman lifecycle via docker-compose.infra.yml (infra-only).
 # Expects PROJECT_ROOT; sources infra_compose.sh.
 
@@ -10,15 +11,15 @@ _postgres_container_running() {
 _postgres_wait_for_ready() {
 	local retries=30
 	echo "Waiting for PostgreSQL to accept connections..."
-	while (( retries > 0 )); do
+	while ((retries > 0)); do
 		if (
-			cd "$PROJECT_ROOT"
+			cd "$PROJECT_ROOT" || exit
 			infra_compose exec -T postgres pg_isready -U "${POSTGRES_USER:?set POSTGRES_USER in .env}" -d "${POSTGRES_DB:?set POSTGRES_DB in .env}"
 		) &>/dev/null; then
 			return 0
 		fi
 		sleep 1
-		(( retries-- )) || true
+		((retries--)) || true
 	done
 	echo "PostgreSQL container did not become ready in time." >&2
 	return 1
@@ -35,7 +36,7 @@ postgres_prepare_for_start() {
 
 	echo "Starting PostgreSQL container..."
 	(
-		cd "$PROJECT_ROOT"
+		cd "$PROJECT_ROOT" || exit
 		infra_compose up -d postgres
 	)
 	_postgres_wait_for_ready
@@ -47,7 +48,7 @@ postgres_reset_container() {
 
 	echo "Resetting PostgreSQL container (recreate volume with current POSTGRES_PASSWORD)..."
 	(
-		cd "$PROJECT_ROOT"
+		cd "$PROJECT_ROOT" || exit
 		infra_compose stop postgres 2>/dev/null || true
 		# Path B app container shares the infra network and blocks postgres removal.
 		podman stop todos-app 2>/dev/null || true
@@ -68,7 +69,7 @@ postgres_stop_container() {
 	fi
 	echo "Stopping PostgreSQL container..."
 	(
-		cd "$PROJECT_ROOT"
+		cd "$PROJECT_ROOT" || exit
 		infra_compose stop postgres
 	) || true
 }

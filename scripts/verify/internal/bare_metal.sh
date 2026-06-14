@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Bare-metal stack verification (venv API + infra-only Compose: Valkey + PostgreSQL)
 
 VERIFY_BARE_METAL_API_PID=""
@@ -28,7 +29,7 @@ verify_run_bare_metal() {
 
 	export DATABASE_URL="$database_url"
 	verify_apply_defaults
-	cd "$PROJECT_ROOT"
+	cd "$PROJECT_ROOT" || return
 	verify_load_database_helpers
 
 	database_reset_container

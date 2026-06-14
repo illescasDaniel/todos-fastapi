@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # HTTP smoke checks for scripts/verify/verify_stack.sh
 
 verify_wait_for_health() {

@@ -6,7 +6,6 @@ quality_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 scripts_dir="$(cd "${quality_dir}/.." && pwd)"
 script_dir="${scripts_dir}"
 repo_root="$(cd "${scripts_dir}/.." && pwd)"
-SCRIPT_DIR="${scripts_dir}"
 
 # shellcheck source=scripts/quality/internal/lib.sh
 source "${quality_dir}/internal/lib.sh"
@@ -17,12 +16,12 @@ coverage=false
 args=()
 for arg in "$@"; do
 	case "${arg}" in
-		--coverage)
-			coverage=true
-			;;
-		*)
-			args+=("${arg}")
-			;;
+	--coverage)
+		coverage=true
+		;;
+	*)
+		args+=("${arg}")
+		;;
 	esac
 done
 
@@ -180,7 +179,8 @@ _tests_bootstrap_postgres() {
 
 _tests_bootstrap_postgres
 
-cd "${repo_root}"
+cd "${repo_root}" || exit
+# shellcheck disable=SC1091
 source ".venv/bin/activate"
 
 if [[ "${coverage}" == true ]]; then

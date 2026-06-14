@@ -24,6 +24,7 @@ Use this skill after substantive code changes to run the full quality gate — t
 
 ## Constraints
 
+- **Cursor agents:** invoke `run.sh` / `checks.sh` with Shell **full permissions** (`required_permissions: ["all"]`). Default sandbox cannot read `.env` or `.venv/`; the gate fails with false "missing venv" or permission errors. Keep `.cursorignore` as-is; unsandbox the run.
 - Do not install packages globally.
 - **Do not** use a check-only run as the only local gate pass — always run `--fix` first, then confirm without `--fix`.
 - All steps run in order each time; failures do not skip later steps.

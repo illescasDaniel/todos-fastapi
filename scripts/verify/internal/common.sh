@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared helpers for scripts/verify/verify_stack.sh.
 
 VERIFY_API_HOST="${VERIFY_API_HOST:-127.0.0.1}"

@@ -24,6 +24,7 @@ database_ensure_ready
 export DATABASE_URL VALKEY_URL
 database_clear_settings_cache
 
+# shellcheck disable=SC1091
 source ".venv/bin/activate"
 
 if [[ "$mode" == "pro" ]]; then
