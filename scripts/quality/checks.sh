@@ -130,7 +130,8 @@ fi
 
 # --- 3. pyright ---
 gate_step_start "basedpyright"
-pyright_json="$("${quality_dir}/pyright.sh" --outputjson 2>/dev/null)"
+pyright_stderr="$(mktemp)"
+pyright_json="$("${quality_dir}/pyright.sh" --outputjson 2>"${pyright_stderr}")"
 pyright_exit=$?
 emit_out="$(printf '%s' "${pyright_json}" | "${PYTHON}" "${internal_dir}/gate_emit.py" pyright 2>&1)"
 summary=""
@@ -139,8 +140,12 @@ while IFS= read -r line; do
 		summary="${line}"
 	elif [[ "${line}" == ::* ]]; then
 		echo "${line}"
+		if [[ "${line}" == *"basedpyright returned invalid JSON"* ]] && [[ -s "${pyright_stderr}" ]]; then
+			cat "${pyright_stderr}" >&2
+		fi
 	fi
 done <<< "${emit_out}"
+rm -f "${pyright_stderr}"
 if [[ -n "${summary}" ]]; then
 	gate_apply_emit_summary "${summary}"
 else
