@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Valkey Podman lifecycle (always-on infra via docker-compose.infra.yml).
 # Expects PROJECT_ROOT.
 
@@ -14,15 +15,15 @@ _valkey_wait_for_ready() {
 		auth_args=(-a "$VALKEY_PASSWORD")
 	fi
 	echo "Waiting for Valkey to accept connections..."
-	while (( retries > 0 )); do
+	while ((retries > 0)); do
 		if (
-			cd "$PROJECT_ROOT"
+			cd "$PROJECT_ROOT" || exit || exit
 			infra_compose exec -T valkey valkey-cli "${auth_args[@]}" ping
 		) &>/dev/null; then
 			return 0
 		fi
 		sleep 1
-		(( retries-- )) || true
+		((retries--)) || true
 	done
 	echo "Valkey container did not become ready in time." >&2
 	return 1
@@ -39,7 +40,7 @@ valkey_prepare_for_start() {
 
 	echo "Starting Valkey container..."
 	(
-		cd "$PROJECT_ROOT"
+		cd "$PROJECT_ROOT" || exit
 		infra_compose up -d valkey
 	)
 	_valkey_wait_for_ready

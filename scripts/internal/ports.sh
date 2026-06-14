@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Load port/bind defaults from config/ports.env (+ optional ports.local.env).
 # Requires PROJECT_ROOT. Prefer env_load_ports from scripts/internal/load_env.sh.
 

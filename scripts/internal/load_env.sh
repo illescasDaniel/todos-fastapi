@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Safe dotenv loading for scripts. Requires PROJECT_ROOT before env_load_ports / env_load_secrets.
 
 env_safe_source() {
@@ -11,7 +12,7 @@ env_safe_source() {
 		if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
 			export "$key"="$value"
 		fi
-	done < "$env_file"
+	done <"$env_file"
 }
 
 env_require_ports() {

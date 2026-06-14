@@ -36,9 +36,9 @@ if [[ "${CI:-}" == "true" && "${FIX}" == true ]]; then
 	FIX=false
 fi
 
-GATE_PLANNED_STEPS=5
+GATE_PLANNED_STEPS=6
 if [[ "${FULL}" == true ]]; then
-	GATE_PLANNED_STEPS=6
+	GATE_PLANNED_STEPS=7
 fi
 
 gate_init
@@ -47,7 +47,7 @@ gate_init
 source "${internal_dir}/lib.sh"
 lib_require_venv
 PYTHON="${LIB_REPO_ROOT}/.venv/bin/python"
-cd "${repo_root}"
+cd "${repo_root}" || exit
 
 set +e
 
@@ -64,7 +64,7 @@ if [[ "${audit_exit}" -eq 0 ]]; then
 		elif [[ "${line}" == ::* ]]; then
 			echo "${line}"
 		fi
-	done <<< "${emit_out}"
+	done <<<"${emit_out}"
 	gate_apply_emit_summary "${summary:-GATE_SUMMARY errors=0 warnings=0}"
 else
 	gate_gha_error "" "" "" "pip-audit" "dependency audit failed (exit ${audit_exit})"
@@ -92,7 +92,6 @@ else
 	lib_activate_venv
 	lib_ruff_targets
 	ruff_check_out="$(ruff check "${LIB_RUFF_TARGETS[@]}" --output-format=github 2>&1)"
-	ruff_check_exit=$?
 	printf '%s\n' "${ruff_check_out}"
 	emit_out="$(printf '%s\n' "${ruff_check_out}" | "${PYTHON}" "${internal_dir}/gate_emit.py" ruff-github 2>&1)"
 	summary=""
@@ -102,7 +101,7 @@ else
 		elif [[ "${line}" == ::* ]]; then
 			: # already printed via ruff_check_out for github format
 		fi
-	done <<< "${emit_out}"
+	done <<<"${emit_out}"
 	ruff_format_out="$(ruff format --check "${LIB_RUFF_TARGETS[@]}" 2>&1)"
 	ruff_format_exit=$?
 	if [[ -n "${ruff_format_out}" ]]; then
@@ -128,7 +127,24 @@ else
 	fi
 fi
 
-# --- 3. pyright ---
+# --- 3. shell ---
+gate_step_start "shell"
+if [[ "${FIX}" == true ]]; then
+	shell_output="$("${quality_dir}/shellcheck.sh" --fix 2>&1)"
+else
+	shell_output="$("${quality_dir}/shellcheck.sh" 2>&1)"
+fi
+shell_exit=$?
+printf '%s\n' "${shell_output}"
+if [[ "${shell_exit}" -eq 0 ]]; then
+	gate_record_pass
+else
+	gate_gha_error "" "" "" "shell" "shell lint/format failed (exit ${shell_exit})"
+	gate_record_fail 1 0
+	gate_add_detail "[shell] exit ${shell_exit}"
+fi
+
+# --- 4. pyright ---
 gate_step_start "basedpyright"
 pyright_json="$("${quality_dir}/pyright.sh" --outputjson 2>/dev/null)"
 pyright_exit=$?
@@ -140,7 +156,7 @@ while IFS= read -r line; do
 	elif [[ "${line}" == ::* ]]; then
 		echo "${line}"
 	fi
-done <<< "${emit_out}"
+done <<<"${emit_out}"
 if [[ -n "${summary}" ]]; then
 	gate_apply_emit_summary "${summary}"
 else
@@ -152,7 +168,7 @@ else
 	fi
 fi
 
-# --- 4. mcp tests ---
+# --- 5. mcp tests ---
 gate_step_start "mcp tests"
 mcp_output="$("${internal_dir}/mcp_tests.sh" "${forwarded_args[@]}" 2>&1)"
 mcp_exit=$?
@@ -165,7 +181,7 @@ while IFS= read -r line; do
 	elif [[ "${line}" == ::* ]]; then
 		echo "${line}"
 	fi
-done <<< "${emit_out}"
+done <<<"${emit_out}"
 if [[ -n "${summary}" ]]; then
 	gate_apply_emit_summary "${summary}"
 elif [[ "${mcp_exit}" -eq 0 ]]; then
@@ -174,7 +190,7 @@ else
 	gate_record_fail 1 0
 fi
 
-# --- 5. pytest ---
+# --- 6. pytest ---
 gate_step_start "pytest"
 export JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes!
 export POSTGRES_USER=todos
@@ -192,7 +208,7 @@ while IFS= read -r line; do
 	elif [[ "${line}" == ::* ]]; then
 		echo "${line}"
 	fi
-done <<< "${emit_out}"
+done <<<"${emit_out}"
 if [[ -n "${summary}" ]]; then
 	gate_apply_emit_summary "${summary}"
 elif [[ "${pytest_exit}" -eq 0 ]]; then
@@ -201,7 +217,7 @@ else
 	gate_record_fail 1 0
 fi
 
-# --- 6. verify_stack (optional) ---
+# --- 7. verify_stack (optional) ---
 if [[ "${FULL}" == true ]]; then
 	gate_step_start "verify_stack"
 	verify_output="$("${scripts_dir}/verify/verify_stack.sh" --skip-coverage 2>&1)"

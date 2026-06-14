@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Derive DATABASE_URL / VALKEY_URL from ports + secrets. Source after load_env.sh.
 
 env_read_key_from_file() {
@@ -20,7 +21,7 @@ env_read_key_from_file() {
 			printf '%s' "$value"
 			return 0
 		fi
-	done < "$env_file"
+	done <"$env_file"
 	return 1
 }
 

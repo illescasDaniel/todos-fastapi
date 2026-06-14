@@ -56,10 +56,10 @@ else
 fi
 
 if [[ "$remove_containers" == "true" ]]; then
-	container_compose_down_remove_current
+	container_compose_down_remove_current "$@"
 	echo "Stack torn down (containers removed; volumes and images kept)."
 else
-	container_compose_stop_current
+	container_compose_stop_current "$@"
 	if [[ "$prod_mode" == "true" ]]; then
 		echo "App stopped. Start again with: ./scripts/container/deploy.sh"
 	else

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared database helpers for scripts/start.sh and scripts/database/*.sh.
 # Source from bash after PROJECT_ROOT is set.
 

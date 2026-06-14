@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Run migrate/seed commands inside the app container (shared by migrate.sh and seed.sh).
 
 container_ops_init() {
@@ -5,7 +6,7 @@ container_ops_init() {
 	ops_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	PROJECT_ROOT="${PROJECT_ROOT:-$(cd "${ops_dir}/../../.." && pwd)}"
 	DATABASE_SCRIPTS_DIR="${DATABASE_SCRIPTS_DIR:-${PROJECT_ROOT}/scripts/database/internal}"
-	cd "$PROJECT_ROOT"
+	cd "$PROJECT_ROOT" || exit
 
 	local container_script_dir="${PROJECT_ROOT}/scripts/container"
 	SCRIPT_DIR="$container_script_dir"

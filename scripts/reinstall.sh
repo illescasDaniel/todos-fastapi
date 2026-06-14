@@ -7,6 +7,7 @@ if [[ ! -d ".venv" ]]; then
 	exit 1
 fi
 
+# shellcheck disable=SC1091
 source ".venv/bin/activate"
 
 pip uninstall -y fastapi-todos || true
@@ -14,6 +15,9 @@ pip uninstall -y fastapi-todos || true
 if [[ $# -eq 0 ]]; then
 	pip install -e .
 else
-	extras_csv=$(IFS=,; echo "$*")
+	extras_csv=$(
+		IFS=,
+		echo "$*"
+	)
 	pip install -e ".[${extras_csv}]"
 fi

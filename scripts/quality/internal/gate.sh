@@ -21,7 +21,6 @@ gate_init() {
 gate_step_start() {
 	local name="$1"
 	GATE_STEP_COUNT=$((GATE_STEP_COUNT + 1))
-	GATE_CURRENT_STEP="${name}"
 	GATE_CURRENT_INDEX=$((GATE_STEP_COUNT - 1))
 	GATE_STEPS+=("${name}")
 	GATE_STEP_STATUS+=("pending")

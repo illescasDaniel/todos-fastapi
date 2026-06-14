@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Full-stack Compose verification (Path B; HTTP smoke only)
 
 verify_run_compose() {
@@ -15,7 +16,7 @@ verify_run_compose() {
 
 	export DATABASE_URL="$database_url"
 	verify_apply_defaults
-	cd "$PROJECT_ROOT"
+	cd "$PROJECT_ROOT" || return
 
 	"$PROJECT_ROOT/scripts/database/wipe.sh" --yes
 	"$PROJECT_ROOT/scripts/container/up.sh"
