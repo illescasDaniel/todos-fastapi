@@ -46,7 +46,7 @@ if ! container_start_or_up; then
 fi
 
 echo "Waiting for API health check..."
-if container_wait_for_health; then
+if container_wait_for_health "$@"; then
 	container_print_stack_ready
 else
 	echo "Containers started but /health did not respond in time." >&2

@@ -39,7 +39,9 @@ jobs:
         run: python -m venv .venv
 
       - name: Install dependencies
-        run: .venv/bin/pip install -e ".[dev]"
+        run: |
+          .venv/bin/pip install -e ".[dev]"
+          .venv/bin/pip install -e "mcp/todos-backend/"
 
       - name: Install shell linting tools
         run: |
