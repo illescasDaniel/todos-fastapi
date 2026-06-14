@@ -20,7 +20,7 @@ lib_activate_venv() {
 
 lib_ensure_mcp_installed() {
 	if ! python -c "import todos_mcp" 2>/dev/null; then
-		echo "Installing MCP package (editable): pip install -e mcp/todos-backend/"
+		echo "Installing MCP package (editable): pip install -e mcp/todos-backend/" >&2
 		pip install -q -e "mcp/todos-backend/"
 	fi
 }
