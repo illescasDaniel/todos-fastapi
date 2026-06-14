@@ -19,10 +19,7 @@ TODO.txt
 docs/images/
 tools/
 scripts/database/
-scripts/run_*.sh
+scripts/quality/
 scripts/reinstall.sh
-scripts/seed.sh
-scripts/migrate.sh
-scripts/wipe.sh
 scripts/start.sh
 docs/api.http

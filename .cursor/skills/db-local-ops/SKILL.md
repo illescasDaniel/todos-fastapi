@@ -12,7 +12,7 @@ Use this skill when the user wants to reset local dev data, re-seed demo records
 
 ## Workflow
 
-1. Confirm `DATABASE_URL` in `.env` targets the intended **local** database.
+1. Confirm `.env` targets the intended **local** database (secrets + `config/ports.env`; derived `DATABASE_URL` unless overridden).
 2. Wipe (full volume reset):
    - `./.cursor/skills/db-local-ops/scripts/run.sh wipe`
    - Re-apply schema with `alembic-migrate`; optionally seed afterward.

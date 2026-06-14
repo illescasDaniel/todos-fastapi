@@ -7,11 +7,11 @@ cmd="${1:-}"
 case "${cmd}" in
 wipe)
 	shift
-	exec ./scripts/wipe.sh "$@"
+	exec ./scripts/database/wipe.sh "$@"
 	;;
 seed)
 	shift
-	exec ./scripts/seed.sh "$@"
+	exec ./scripts/database/seed.sh "$@"
 	;;
 *)
 	echo "Usage: $0 {wipe|seed}" >&2

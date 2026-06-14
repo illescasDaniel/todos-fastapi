@@ -19,8 +19,8 @@ class FakePasswordHasher:
 
 
 class FakeAccessTokenIssuer:
-	def issue(self, *, user_id: object, username: str, role: str) -> str:
-		return f"token:{user_id}:{username}:{role}"
+	def issue(self, *, user_id: object, username: str, role: str, token_version: int) -> str:
+		return f"token:{user_id}:{username}:{role}:{token_version}"
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ async def test_authenticate_returns_access_token(repo: FakeUserRepository) -> No
 		username="jane",
 		password="changeme",
 	)
-	assert token == f"token:{TEST_USER_ID}:jane:user"
+	assert token == f"token:{TEST_USER_ID}:jane:user:0"
 
 
 async def test_authenticate_raises_for_unknown_username(repo: FakeUserRepository) -> None:

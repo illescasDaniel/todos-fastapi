@@ -4,14 +4,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=scripts/database/setup.sh
-source "$SCRIPT_DIR/database/setup.sh"
+# shellcheck source=scripts/database/internal/setup.sh
+source "$SCRIPT_DIR/database/internal/setup.sh"
 
 mode="${1:-dev}"
 
 database_load_env
-# shellcheck source=scripts/ports.sh
-source "$SCRIPT_DIR/ports.sh"
 
 if [[ ! -d ".venv" ]]; then
 	echo "Missing .venv. Create it first: python3 -m venv .venv"
@@ -23,7 +21,7 @@ if database_uses_container; then
 fi
 
 database_ensure_ready
-export DATABASE_URL
+export DATABASE_URL VALKEY_URL
 database_clear_settings_cache
 
 source ".venv/bin/activate"

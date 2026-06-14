@@ -12,7 +12,7 @@ Use this skill when the user changes ORM models, needs to apply pending migratio
 
 ## Workflow
 
-1. Ensure `DATABASE_URL` in `.env` points at the intended local database and Podman is available.
+1. Ensure `.env` has local DB secrets (`POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`) and Podman is available. `DATABASE_URL` is derived unless overridden.
 2. For schema changes:
    - Edit ORM models under `src/todos_app/infrastructure/persistence/<feature>/orm.py`.
    - Run `./.cursor/skills/alembic-migrate/scripts/run.sh revision -m "describe change"` (host `.venv` required).

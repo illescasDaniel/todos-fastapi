@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,6 +17,7 @@ from todos_app.infrastructure.persistence.database import Base
 
 class UserModel(Base):
 	__tablename__ = "users"
+
 	id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
 	email: Mapped[str] = mapped_column(String(EMAIL_MAX_LENGTH), unique=True)
 	username: Mapped[str] = mapped_column(String(USERNAME_MAX_LENGTH), unique=True)
@@ -24,3 +26,9 @@ class UserModel(Base):
 	hashed_password: Mapped[str] = mapped_column(String(HASHED_PASSWORD_MAX_LENGTH))
 	is_active: Mapped[bool] = mapped_column(default=True)
 	role: Mapped[str] = mapped_column(String(ROLE_MAX_LENGTH))
+	token_version: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0", nullable=False)
+
+
+# Functional unique index for case-insensitive username uniqueness (L2).
+# Defined after the class so UserModel.username is available.
+_username_lower_idx = sa.Index("ix_users_username_lower", sa.func.lower(UserModel.username), unique=True)  # pyright: ignore[reportArgumentType]

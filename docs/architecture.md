@@ -148,7 +148,7 @@ Only create a subpackage when you have real adapters for that system. Do not add
 
 | Piece | Responsibility |
 |-------|----------------|
-| **Driver URL** | `postgresql+asyncpg://…` — see [`.env.example`](../.env.example) and [Deployment](../docs/deployment.md#local-podman-compose) |
+| **Driver URL** | `postgresql+asyncpg://…` — derived locally from `config/ports.env` + `.env` secrets, or set explicitly (Path C) — see [Database](database.md#postgresql) |
 | **`database.py`** | `require_async_db_driver`, `create_async_engine`, URL helpers (`database_url_is_postgresql`), `async_sessionmaker`, async `get_db`, `import_all_orm_models` |
 | **`migrations.py`** | `run_migrations_async()` — canonical programmatic `alembic upgrade` (tests, seeding) |
 | **`<feature>/`** | Per-aggregate adapters: `orm.py`, `mapper.py`, `repository.py` (dialect-agnostic SQLAlchemy) |
@@ -160,7 +160,7 @@ Only create a subpackage when you have real adapters for that system. Do not add
 
 **Dependencies:** `sqlalchemy`, `asyncpg`, and `greenlet` in core (`pyproject.toml`). `require_async_db_driver` checks the asyncpg module before `create_async_engine`. Request-scoped code must not use synchronous `Session` for queries; keep async in repositories and routes.
 
-**Tests** use a PostgreSQL test database ([`tests/conftest.py`](../../tests/conftest.py), default `TEST_DATABASE_URL`); they do not require Compose volumes but need PostgreSQL reachable on `127.0.0.1:5432`.
+**Tests** use a PostgreSQL test database ([`tests/conftest.py`](../../tests/conftest.py), default `TEST_DATABASE_URL`); they do not require Compose volumes but need PostgreSQL reachable on `127.0.0.1:${POSTGRES_PORT}` (`POSTGRES_PORT` from `config/ports.env`).
 
 **Transactions:** `get_db` owns the unit of work for HTTP requests—it commits after the handler returns successfully and rolls back on exceptions. Repository adapters stage changes (`execute`, `add`, `flush`) but do not call `commit()`, so multiple adapter calls in one request share a single transaction.
 
@@ -172,7 +172,7 @@ If storage grows beyond a single database (e.g. S3 for attachments), add sibling
 
 | Piece | Responsibility |
 |-------|----------------|
-| **`VALKEY_URL`** | Valkey connection URL (default `valkey://127.0.0.1:6379/0`; see [`.env.example`](../.env.example) and [Deployment](../docs/deployment.md#local-podman-compose)) |
+| **`VALKEY_URL`** | Valkey connection URL — derived locally from `config/ports.env` + `.env` secrets, or set explicitly (Path C) — see [Deployment](../docs/deployment.md#local-podman-compose) |
 | **`user_auth_cache_codec.py`** | JSON encode/decode for `AuthenticatedUser` cache entries |
 | **`valkey_client.py`** | `require_valkey_driver`, `create_valkey_client` |
 | **`valkey_user_auth_cache.py`** | Valkey adapter for `UserAuthCache` port |
@@ -249,20 +249,25 @@ Add new `get_*_repository` factories and `*Dep` aliases in `core/dependencies.py
 
 ## Configuration and secrets
 
-Runtime configuration lives in [`src/todos_app/core/settings.py`](../src/todos_app/core/settings.py). Values are loaded with **pydantic-settings** from environment variables and an optional `.env` file at the project root (the path used when the server starts).
+Runtime configuration lives in [`src/todos_app/core/settings.py`](../src/todos_app/core/settings.py). Values load with **pydantic-settings** from, in order: [`config/ports.env`](../config/ports.env), optional gitignored `config/ports.local.env`, then `.env` at the project root.
 
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `DATABASE_URL` | no | `postgresql+asyncpg://todos:changeme@127.0.0.1:5432/todos` | SQLAlchemy async PostgreSQL URL |
-| `APP_ENV` | no | `local` | Environment label (`local`, `staging`, `production`) |
+| Variable | Required | Default / derivation | Purpose |
+|----------|----------|----------------------|---------|
 | `JWT_SECRET_KEY` | yes | — | HMAC signing key for access tokens issued at login |
+| `POSTGRES_PASSWORD` | yes (local, when `DATABASE_URL` unset) | — | PostgreSQL password; used to derive local `DATABASE_URL` |
+| `POSTGRES_USER` | yes (local scripts/Compose) | — | PostgreSQL user (typically `todos`) |
+| `POSTGRES_DB` | yes (local scripts/Compose) | — | PostgreSQL database name (typically `todos`) |
+| `VALKEY_PASSWORD` | yes (local Compose) | — | Valkey password; used to derive local `VALKEY_URL` when unset |
+| `DATABASE_URL` | no | Derived locally from ports + secrets | SQLAlchemy async PostgreSQL URL |
+| `VALKEY_URL` | no | Derived locally from ports + secrets | Valkey URL for auth user cache |
+| `POSTGRES_PORT`, `VALKEY_PORT`, `API_HOST`, `API_PORT` | no | From `config/ports.env` | Host ports and bind addresses |
+| `APP_ENV` | no | `local` | Environment label (`local`, `staging`, `production`) |
 | `JWT_EXPIRE_MINUTES` | no | `60` | Access token lifetime in minutes |
-| `VALKEY_URL` | no | `valkey://127.0.0.1:6379/0` | Valkey URL for auth user cache |
 | `AUTH_USER_CACHE_TTL_SECONDS` | no | `120` | TTL for cached authenticated user identity |
 
 Access tokens are always signed with **HS256**; the algorithm is fixed in `settings.py` and is not configurable via environment variables.
 
-**Local setup:** copy [`.env.example`](../.env.example) to `.env` for Paths A and B, or [`.env.production.example`](../.env.production.example) for Path C deploy. Set `JWT_SECRET_KEY` to a long random string (for example `python -c "import secrets; print(secrets.token_urlsafe(64))"`). `.env` is listed in `.gitignore` and must not be committed.
+**Local setup:** copy [`.env.example`](../.env.example) to `.env` for Paths A and B (secrets only), or [`.env.production.example`](../.env.production.example) for Path C deploy (explicit `DATABASE_URL` / `VALKEY_URL`). Set `JWT_SECRET_KEY` to a long random string (for example `python -c "import secrets; print(secrets.token_urlsafe(64))"`). `.env` is listed in `.gitignore` and must not be committed.
 
 `get_settings()` is cached with `@lru_cache` and exposed to routes via `SettingsDep` in `core/dependencies.py`.
 
@@ -517,7 +522,7 @@ Integration tests use an autouse fixture in [`tests/integration/conftest.py`](..
 **Environment for tests:** set before importing `todos_app` (see root conftest):
 
 - `JWT_SECRET_KEY` — required for JWT issuance in API tests
-- `DATABASE_URL` / `TEST_DATABASE_URL` — PostgreSQL test database (default `postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test`)
+- `DATABASE_URL` / `TEST_DATABASE_URL` — PostgreSQL test database (CI sets `TEST_DATABASE_URL` explicitly; local default uses `POSTGRES_PORT` from `config/ports.env`)
 
 Tests do **not** use Compose volumes or a host dev database.
 
@@ -527,10 +532,10 @@ From the project root with dev dependencies installed:
 
 ```bash
 pip install -e ".[dev]"
-./scripts/run_tests.sh
-./scripts/run_tests.sh -m unit
-./scripts/run_tests.sh -m integration
-./scripts/run_tests.sh --coverage
+./scripts/quality/tests.sh
+./scripts/quality/tests.sh -m unit
+./scripts/quality/tests.sh -m integration
+./scripts/quality/tests.sh --coverage
 ```
 
 Coverage (optional) uses `pytest-cov`; HTML report under `htmlcov/`. The project enforces **90%** line coverage on `todos_app` (`fail_under` in `pyproject.toml`; seeding modules omitted).
@@ -539,4 +544,4 @@ Prefer **unit tests** for application orchestration and domain rules; **integrat
 
 ### Local database reset
 
-**Primary path:** [`scripts/wipe.sh`](../scripts/wipe.sh) removes Compose containers and named volumes (`compose down -v`), then re-run `./scripts/migrate.sh` (and optionally `./scripts/seed.sh`).
+**Primary path:** [`scripts/database/wipe.sh`](../scripts/database/wipe.sh) removes Compose containers and named volumes (`compose down -v`), then re-run `./scripts/database/migrate.sh` (and optionally `./scripts/database/seed.sh`).

@@ -1,12 +1,12 @@
 # API reference
 
-Once the server is running (default `http://localhost:8000`, or `API_PORT` from `.env`), you can access the following resources.
+Once the server is running (`http://localhost:${API_PORT}` — `API_PORT` from [`config/ports.env`](../config/ports.env)), you can access the following resources.
 
 Obtain a JWT access token via `POST /auth/login` before calling protected routes — see [Authentication](authentication.md).
 
 `GET /todos` returns a cursor-paginated envelope (`items`, `next_last_id`, `limit`). Use query parameters `last_id` (omit for the first page; UUID v7 from the previous page) and `limit` (default `20`, maximum `100`). When `next_last_id` is non-null, pass it as `last_id` to fetch the next page. Regular users see only their own todos; admins see all.
 
-User and todo primary keys are **UUID v7** (time-ordered, generated in repository `add()` via `domain/ids.new_id()`). After schema changes, run `./scripts/migrate.sh` (or `./scripts/seed.sh` for a full reset with demo data).
+User and todo primary keys are **UUID v7** (time-ordered, generated in repository `add()` via `domain/ids.new_id()`). After schema changes, run `./scripts/database/migrate.sh` (or `./scripts/database/seed.sh` for a full reset with demo data).
 
 - **Interactive API Docs (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Alternative API Docs (ReDoc):** [http://localhost:8000/redoc](http://localhost:8000/redoc)

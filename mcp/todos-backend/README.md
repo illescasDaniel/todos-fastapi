@@ -45,9 +45,9 @@ Cursor’s `command` points at `mcp/todos-backend/.venv/bin/python` (via `${work
 ## Prerequisites
 
 - Python **3.14+**
-- Repo root [`.env`](../../.env) with `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `DATABASE_URL`
+- Repo root [`.env`](../../.env) with secrets (`JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `VALKEY_PASSWORD`); ports in [`config/ports.env`](../../config/ports.env)
 - **Podman** for compose lifecycle tools
-- Running API at `http://127.0.0.1:8000` for API tools
+- Running API at `http://127.0.0.1:${API_PORT}` (`API_PORT` from `config/ports.env`) for API tools
 
 ## Tool catalog
 
@@ -79,20 +79,21 @@ Protected tools accept optional `access_token`; otherwise they use the token fro
 | Tool | Action |
 |------|--------|
 | `stack_health` | `curl` API `/health` |
+| `open_api_docs` | Open `TODOS_API_BASE_URL/docs` in the default browser |
 | `stack_start_host` | Background `./scripts/start.sh` (Path A) |
 | `stack_stop_host` | Stop MCP-spawned host process |
 | `stack_compose_up` | `./scripts/container/up.sh` (Path B) |
 | `stack_compose_down` | `./scripts/container/down.sh` |
-| `db_migrate` | `./scripts/migrate.sh` |
-| `db_seed` | `./scripts/seed.sh` (needs `APP_ENV=local`) |
-| `db_wipe` | `./scripts/wipe.sh --yes` (**destructive**) |
+| `db_migrate` | `./scripts/database/migrate.sh` |
+| `db_seed` | `./scripts/database/seed.sh` (needs `APP_ENV=local`) |
+| `db_wipe` | `./scripts/database/wipe.sh --yes` (**destructive**) |
 
 ## Configuration
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `TODOS_API_BASE_URL` | `http://127.0.0.1:${API_PORT}` | API base URL (built from `API_HOST` + `API_PORT` when unset) |
-| `API_PORT` | `8000` | Host API port |
+| `TODOS_API_BASE_URL` | Built from `API_HOST` + `API_PORT` (from `config/ports.env`) when unset | API base URL |
+| `API_HOST` / `API_PORT` | From `config/ports.env` | Used when `TODOS_API_BASE_URL` is unset |
 | `TODOS_REPO_ROOT` | auto-detected repo root | Path for lifecycle scripts |
 
 ## Tests

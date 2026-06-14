@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from todos_app.domain.auth.authenticated_user import AuthenticatedUser
+from todos_app.domain.auth.decoded_token import DecodedToken
 
 
 class AccessTokenVerifier(Protocol):
-	def decode(self, token: str) -> AuthenticatedUser | None: ...
+	def decode(self, token: str) -> DecodedToken | None: ...

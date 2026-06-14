@@ -60,6 +60,7 @@ tools/plantuml.jar
 .env.*
 !.env.example
 !.env.production.example
+config/ports.local.env
 
 # Private keys and certificates
 *.pem

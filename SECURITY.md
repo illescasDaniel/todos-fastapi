@@ -22,7 +22,7 @@ Before publishing the repo or deploying beyond localhost:
 
 - [ ] **No production secrets in git** — `.env` and local `.env.*` variants (e.g. `.env.local`, `.env.production`) stay out of version control; committed templates are `.env.example` and `.env.production.example` only (see `.gitignore`).
 - [ ] **Fresh secrets per environment** — generate a strong `JWT_SECRET_KEY` (32+ characters); never reuse template placeholders from `.env.example` or `.env.production.example`.
-- [ ] **Seed scripts local-only** — `./scripts/seed.sh` is blocked when `APP_ENV` is `staging` or `production` and for non-local database hosts.
+- [ ] **Seed scripts local-only** — `./scripts/database/seed.sh` is blocked when `APP_ENV` is `staging` or `production` and for non-local database hosts.
 - [ ] **Database not public** — managed PostgreSQL should not be reachable from the open internet unless your threat model requires it.
 - [ ] **Internet-facing deployments** — place the API behind a **reverse proxy** with **TLS termination**, **rate limiting**, and security headers (HSTS, `X-Content-Type-Options`, etc.). The app container alone does not provide these.
 - [ ] **Restrict bind address** — default Compose binds the API to `127.0.0.1`; widen only when intentional.

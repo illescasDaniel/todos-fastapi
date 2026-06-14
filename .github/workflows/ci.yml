@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # H6: Minimal permissions — only read repository contents.
+    permissions:
+      contents: read
     services:
       postgres:
         image: postgres:16-alpine
@@ -24,9 +27,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v6
+      # H6: pinned to commit SHA for actions/checkout@v6 (tag: v6)
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
-      - uses: actions/setup-python@v6
+      # H6: pinned to commit SHA for actions/setup-python@v6 (tag: v6)
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: "3.14"
 
@@ -36,14 +41,32 @@ jobs:
       - name: Install dependencies
         run: .venv/bin/pip install -e ".[dev]"
 
-      - name: Audit dependencies
-        run: .venv/bin/pip install pip-audit && ./scripts/audit_deps.sh
-
-      - name: Ruff
-        run: ./scripts/run_ruff.sh
-
-      - name: Tests with coverage
+      - name: Quality gate
         env:
-          JWT_SECRET_KEY: test-secret-key-for-ci-suite-32bytes!
           TEST_DATABASE_URL: postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test
-        run: ./scripts/run_tests.sh --coverage
+          POSTGRES_USER: todos
+          POSTGRES_PASSWORD: todos
+          POSTGRES_DB: todos_test
+          VALKEY_PASSWORD: test-valkey-password-for-ci
+        run: ./scripts/quality/checks.sh
+
+  scan:
+    runs-on: ubuntu-latest
+    # M10: Scan base image for OS/library CVEs (CRITICAL and HIGH, unfixed only).
+    permissions:
+      contents: read
+    steps:
+      # H6: pinned to commit SHA for actions/checkout@v6 (tag: v6)
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      # M10: aquasecurity/trivy-action@v0.36.0 pinned to commit SHA
+      # To update: check https://github.com/aquasecurity/trivy-action/releases
+      - name: Scan image for CVEs
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: 'python:3.14-slim-bookworm'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'

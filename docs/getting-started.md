@@ -4,7 +4,7 @@
 
 **Primary dev path:** infra-only Compose ([`docker-compose.infra.yml`](../docker-compose.infra.yml) — Valkey + PostgreSQL) + host app via `./scripts/start.sh`. See [Deployment — Local Podman Compose](deployment.md#local-podman-compose).
 
-Local development uses Podman Compose for Valkey and PostgreSQL. The host app connects to both on `127.0.0.1`. The same `./scripts/migrate.sh`, `./scripts/seed.sh`, and `./scripts/wipe.sh` commands apply to host-app and full-stack workflows.
+Local development uses Podman Compose for Valkey and PostgreSQL. The host app connects to both on `127.0.0.1`. The same `./scripts/database/migrate.sh`, `./scripts/database/seed.sh`, and `./scripts/database/wipe.sh` commands apply to host-app and full-stack workflows.
 
 To keep your global Python environment clean, install all dependencies inside a virtual environment (`.venv`).
 
@@ -88,10 +88,10 @@ After dependencies are installed, configure the app and prepare the database **b
 Copy [`.env.example`](../.env.example) to `.env` in the project root and set at least:
 
 - `JWT_SECRET_KEY` — required; generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
-- `POSTGRES_PASSWORD` — required for the Compose PostgreSQL service
-- `API_PORT`, `POSTGRES_PORT`, `VALKEY_PORT` — local host ports (defaults `8000`, `5432`, `6379`; see [`.env.example`](../.env.example))
-- `DATABASE_URL` — `postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT}/todos` (use the same password as `POSTGRES_PASSWORD`)
-- `VALKEY_URL` — optional; defaults to `valkey://127.0.0.1:${VALKEY_PORT}/0` (`./scripts/start.sh` ensures Valkey infra is running)
+- `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB` — required for the Compose PostgreSQL service
+- `VALKEY_PASSWORD` — required for the Compose Valkey service; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+- Ports: [`config/ports.env`](../config/ports.env) (override locally via gitignored `config/ports.local.env`)
+- `DATABASE_URL` and `VALKEY_URL` are derived from ports + passwords — set them in `.env` only to override
 - `APP_ENV` — optional; `local` (default), `staging`, or `production`
 
 **2. Create database tables**
@@ -99,27 +99,27 @@ Copy [`.env.example`](../.env.example) to `.env` in the project root and set at 
 Tables come from Alembic migrations, not from starting the server.
 
 ```bash
-chmod +x scripts/migrate.sh   # once, if needed
-./scripts/migrate.sh
+chmod +x scripts/database/migrate.sh   # once, if needed
+./scripts/database/migrate.sh
 ```
 
-`./scripts/migrate.sh` ensures Valkey and PostgreSQL are up, then runs Alembic inside the app container.
+`./scripts/database/migrate.sh` ensures Valkey and PostgreSQL are up, then runs Alembic inside the app container.
 
 This runs `alembic upgrade head` and creates `users` and `todos` (and the `alembic_version` table).
 
-> **Run order:** apply schema with `./scripts/migrate.sh` before `./scripts/start.sh` on a fresh database. Use `./scripts/wipe.sh` for a full volume reset (`compose down -v`), then migrate (and optionally seed) again.
+> **Run order:** apply schema with `./scripts/database/migrate.sh` before `./scripts/start.sh` on a fresh database. Use `./scripts/database/wipe.sh` for a full volume reset (`compose down -v`), then migrate (and optionally seed) again.
 
 **3. Optional: load demo data**
 
 To reset the DB and insert sample users and todos (`jane` / `changeme`, `admin` / `changeme`):
 
 ```bash
-./scripts/seed.sh
+./scripts/database/seed.sh
 ```
 
 Seeding runs migrations after reset, so you can use it instead of step 2 when you want a fresh DB with demo records. See [Seeding](database.md#seeding) for details. Public `POST /users` signup always creates `role=user`; the seeded **`admin` / `changeme`** account is the local admin — see [Authentication — Admin users](authentication.md#admin-users).
 
-To wipe schema and data without re-seeding (empty database), run `./scripts/wipe.sh` and then `./scripts/migrate.sh`. See [Wiping the database](database.md#wiping-the-database).
+To wipe schema and data without re-seeding (empty database), run `./scripts/database/wipe.sh` and then `./scripts/database/migrate.sh`. See [Wiping the database](database.md#wiping-the-database).
 
 **4. Start the API**
 
@@ -132,9 +132,9 @@ chmod +x scripts/start.sh   # once, if needed
 
 | Step | Command |
 |------|---------|
-| Configure `.env` | Copy `.env.example`, set `JWT_SECRET_KEY` and `POSTGRES_PASSWORD`, align `DATABASE_URL` |
-| Create tables | `./scripts/migrate.sh` |
-| Demo data (optional) | `./scripts/seed.sh` |
+| Configure `.env` | Copy `.env.example`; set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `VALKEY_PASSWORD` |
+| Create tables | `./scripts/database/migrate.sh` |
+| Demo data (optional) | `./scripts/database/seed.sh` |
 | Run API | `./scripts/start.sh` |
 
 ## Running the server
@@ -160,12 +160,12 @@ chmod +x scripts/start.sh
 
 | Script | Role |
 |--------|------|
-| `scripts/migrate.sh` | Ensure Valkey + PostgreSQL infra; apply or inspect Alembic revisions via app container (`revision` autogenerate uses host `.venv`) |
-| `scripts/wipe.sh` | Remove all Compose containers and named volumes (full reset) |
-| `scripts/seed.sh` | Reset DB, migrate, load demo data (via app container) |
+| `scripts/database/migrate.sh` | Ensure Valkey + PostgreSQL infra; apply or inspect Alembic revisions via app container (`revision` autogenerate uses host `.venv`) |
+| `scripts/database/wipe.sh` | Remove all Compose containers and named volumes (full reset) |
+| `scripts/database/seed.sh` | Reset DB, migrate, load demo data (via app container) |
 | `scripts/start.sh` | Ensure infra, run host API with hot reload |
 
-All share `scripts/database/setup.sh` and `ensure.sh`. For a new machine or empty database, follow [Set up your working environment](#5-set-up-your-working-environment) first.
+All share `scripts/database/internal/setup.sh` and `ensure.sh`. For a new machine or empty database, follow [Set up your working environment](#5-set-up-your-working-environment) first.
 
 ### Option B: Running the FastAPI CLI directly
 
@@ -173,11 +173,11 @@ You can also bypass the script and call the `fastapi` command line tool directly
 
 - **Development Mode** (auto-reload):
   ```bash
-  fastapi dev src/todos_app/main.py --port "${API_PORT:-8000}"
+  fastapi dev src/todos_app/main.py --port "$API_PORT"
   ```
 - **Production Mode**:
   ```bash
-  fastapi run src/todos_app/main.py --port "${API_PORT:-8000}"
+  fastapi run src/todos_app/main.py --port "$API_PORT"
   ```
 
 ### Option C: Running `main.py` directly
@@ -188,7 +188,7 @@ Since `main.py` is in the `src/` directory, you can launch it using python:
 python src/todos_app/main.py
 ```
 
-The API does **not** create or migrate schema on startup. Run [`./scripts/migrate.sh`](database.md#database-migrations-alembic) before `./scripts/start.sh` (see [PostgreSQL](database.md#postgresql)).
+The API does **not** create or migrate schema on startup. Run [`./scripts/database/migrate.sh`](database.md#database-migrations-alembic) before `./scripts/start.sh` (see [PostgreSQL](database.md#postgresql)).
 
 ## Podman Compose — Path B (local full stack)
 
@@ -196,13 +196,7 @@ Prod-like local development: same infra as Path A plus an app container. Require
 
 **1. Configure `.env`**
 
-Copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY` and `POSTGRES_PASSWORD`. Set `DATABASE_URL` to PostgreSQL on `127.0.0.1`:
-
-```
-DATABASE_URL=postgresql+asyncpg://todos:YOUR_POSTGRES_PASSWORD@127.0.0.1:5432/todos
-```
-
-Path B rewrites the host to `postgres` inside the app container.
+Copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, and `VALKEY_PASSWORD`. Ports come from [`config/ports.env`](../config/ports.env); the app derives `DATABASE_URL` and `VALKEY_URL` on the host unless you override them in `.env`.
 
 **2. Start the stack**
 
@@ -214,7 +208,7 @@ chmod +x scripts/container/*.sh   # once
 **3. Optional: demo data**
 
 ```bash
-./scripts/seed.sh
+./scripts/database/seed.sh
 ```
 
 For **production deploy** (Path C), copy [`.env.production.example`](../.env.production.example) to `.env`, then use `./scripts/container/deploy.sh` — see [Deployment — Path C example](deployment.md#path-c--app-only-compose-primary).
@@ -226,13 +220,13 @@ For **production deploy** (Path C), copy [`.env.production.example`](../.env.pro
 | `./scripts/container/up.sh` | Start stack (`compose start` if stopped, else `up -d --build`) |
 | `./scripts/container/down.sh` | Stop stack (containers kept) |
 | `./scripts/container/down.sh --remove` | Remove containers and network; volumes kept |
-| `./scripts/wipe.sh` | Remove local infra containers and named volumes (full reset) |
-| `./scripts/seed.sh` | Reset DB and load demo users/todos (via app container) |
+| `./scripts/database/wipe.sh` | Remove local infra containers and named volumes (full reset) |
+| `./scripts/database/seed.sh` | Reset DB and load demo users/todos (via app container) |
 | `./scripts/container/logs.sh` | Follow app logs |
 
-Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT:-8000}/docs`.
+Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT}/docs` (`API_PORT` from `config/ports.env`).
 
-**Infra-only + host app:** use `./scripts/start.sh` with the same `DATABASE_URL` — see [Deployment](deployment.md#local-podman-compose).
+**Infra-only + host app:** use `./scripts/start.sh` — URLs derived from `config/ports.env` + `.env` — see [Deployment](deployment.md#local-podman-compose).
 
 ## Architecture diagrams (optional)
 

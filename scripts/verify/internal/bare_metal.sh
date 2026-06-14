@@ -1,0 +1,69 @@
+# Bare-metal stack verification (venv API + infra-only Compose: Valkey + PostgreSQL)
+
+VERIFY_BARE_METAL_API_PID=""
+
+verify_bare_metal_cleanup() {
+	local exit_code=$?
+	if [[ -n "$VERIFY_BARE_METAL_API_PID" ]] && kill -0 "$VERIFY_BARE_METAL_API_PID" 2>/dev/null; then
+		kill "$VERIFY_BARE_METAL_API_PID" 2>/dev/null || true
+		wait "$VERIFY_BARE_METAL_API_PID" 2>/dev/null || true
+	fi
+	VERIFY_BARE_METAL_API_PID=""
+	database_stop_container || true
+	trap - EXIT INT TERM HUP
+	return "$exit_code"
+}
+
+verify_run_bare_metal() {
+	local scenario_name="$1"
+	local database_url="$2"
+	local skip_http="${3:-false}"
+
+	local start_ts end_ts elapsed
+	local http_result="-"
+
+	start_ts=$(date +%s)
+	echo ""
+	echo "=== ${scenario_name} ==="
+
+	export DATABASE_URL="$database_url"
+	verify_apply_defaults
+	cd "$PROJECT_ROOT"
+	verify_load_database_helpers
+
+	database_reset_container
+
+	trap verify_bare_metal_cleanup EXIT INT TERM HUP
+
+	"$PROJECT_ROOT/scripts/database/migrate.sh"
+	"$PROJECT_ROOT/scripts/database/seed.sh"
+
+	if [[ "$skip_http" != "true" ]]; then
+		verify_port_available "$VERIFY_API_PORT"
+		# shellcheck disable=SC1091
+		source "$PROJECT_ROOT/.venv/bin/activate"
+		export PYTHONPATH=src
+		export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$VERIFY_JWT_SECRET}"
+		fastapi run src/todos_app/main.py --host "$VERIFY_API_HOST" --port "$VERIFY_API_PORT" &
+		VERIFY_BARE_METAL_API_PID=$!
+		verify_wait_for_health "http://${VERIFY_API_HOST}:${VERIFY_API_PORT}"
+		if verify_http_smoke "http://${VERIFY_API_HOST}:${VERIFY_API_PORT}"; then
+			http_result="ok"
+		else
+			end_ts=$(date +%s)
+			elapsed=$((end_ts - start_ts))
+			verify_record_result "$scenario_name" "-" "fail" "$elapsed"
+			verify_bare_metal_cleanup
+			trap - EXIT INT TERM HUP
+			return 1
+		fi
+	fi
+
+	end_ts=$(date +%s)
+	elapsed=$((end_ts - start_ts))
+	verify_bare_metal_cleanup
+	trap - EXIT INT TERM HUP
+
+	verify_record_result "$scenario_name" "-" "$http_result" "$elapsed"
+	echo "=== ${scenario_name}: done (${elapsed}s) ==="
+}

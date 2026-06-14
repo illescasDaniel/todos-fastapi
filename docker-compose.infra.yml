@@ -5,28 +5,36 @@ name: todos
 
 services:
   valkey:
-    image: docker.io/valkey/valkey:8-alpine
+    # H5: pinned to amd64 digest; re-pin with: podman manifest inspect docker.io/valkey/valkey:8-alpine
+    image: docker.io/valkey/valkey:8-alpine@sha256:18c7010efe0a74c334ee01bd2c5632735d2c0d9518f85b9ad3d995314c6a0b7a
     container_name: todos-valkey
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}"]
+    user: valkey
     ports:
-      - "${COMPOSE_INFRA_BIND:-127.0.0.1}:${VALKEY_PORT:-6379}:6379"
+      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in config/ports.env}:${VALKEY_PORT:?set VALKEY_PORT in config/ports.env}:6379"
     volumes:
       - todos-valkey-data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   postgres:
-    image: docker.io/library/postgres:16-alpine
+    # H5: pinned to amd64 digest; re-pin with: podman manifest inspect docker.io/library/postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine@sha256:79950da386bda7fcc9d57aa9aa9be6c6d7407596a9b8f68014b09a778a9ab316
     container_name: todos-postgres
     ports:
-      - "${COMPOSE_INFRA_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in config/ports.env}:${POSTGRES_PORT:?set POSTGRES_PORT in config/ports.env}:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-todos}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-todos}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
     volumes:
       - todos-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -35,6 +43,16 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
 
 volumes:
   todos-postgres-data:

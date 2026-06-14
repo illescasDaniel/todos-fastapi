@@ -14,3 +14,15 @@ class TodoNotFoundError(Exception):
 
 class TodoOwnerChangeForbiddenError(Exception):
 	pass
+
+
+class CurrentPasswordRequiredError(Exception):
+	pass
+
+
+class CurrentPasswordInvalidError(Exception):
+	pass
+
+
+class LastAdminError(Exception):
+	pass

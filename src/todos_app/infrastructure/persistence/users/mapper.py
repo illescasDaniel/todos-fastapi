@@ -14,6 +14,7 @@ def to_entity(orm: UserModel) -> User:
 		hashed_password=orm.hashed_password,
 		is_active=orm.is_active,
 		role=orm.role,
+		token_version=orm.token_version,
 	)
 
 
@@ -27,4 +28,5 @@ def to_orm(entity: User, *, id: UUID) -> UserModel:
 		hashed_password=entity.hashed_password,
 		is_active=entity.is_active,
 		role=entity.role,
+		token_version=entity.token_version,
 	)

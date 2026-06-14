@@ -15,11 +15,11 @@ down)
 	;;
 wipe)
 	shift
-	exec ./scripts/wipe.sh "$@"
+	exec ./scripts/database/wipe.sh "$@"
 	;;
 seed)
 	shift
-	exec ./scripts/seed.sh "$@"
+	exec ./scripts/database/seed.sh "$@"
 	;;
 logs)
 	shift

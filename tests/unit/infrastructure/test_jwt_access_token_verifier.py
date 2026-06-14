@@ -16,12 +16,13 @@ _VERIFIER = JwtAccessTokenVerifier(_SETTINGS)
 
 
 def test_decode_valid_token() -> None:
-	token = _ISSUER.issue(user_id=TEST_USER_ID, username="jane", role="user")
+	token = _ISSUER.issue(user_id=TEST_USER_ID, username="jane", role="user", token_version=0)
 	user = _VERIFIER.decode(token)
 	assert user is not None
 	assert user.user_id == TEST_USER_ID
 	assert user.username == "jane"
 	assert user.role == "user"
+	assert user.token_version == 0
 
 
 def test_decode_invalid_signature_returns_none() -> None:
@@ -65,7 +66,31 @@ def test_decode_invalid_role_type_returns_none() -> None:
 
 
 def test_decode_unknown_user_id_still_parses() -> None:
-	token = _ISSUER.issue(user_id=UNKNOWN_ID, username="ghost", role="user")
+	token = _ISSUER.issue(user_id=UNKNOWN_ID, username="ghost", role="user", token_version=0)
 	user = _VERIFIER.decode(token)
 	assert user is not None
 	assert user.user_id == UNKNOWN_ID
+
+
+def test_decode_missing_tvs_returns_none() -> None:
+	import jwt as pyjwt
+
+	token = pyjwt.encode(  # pyright: ignore[reportUnknownMemberType]
+		{
+			"sub": str(TEST_USER_ID),
+			"username": "jane",
+			"role": "user",
+			"iss": _SETTINGS.jwt_issuer,
+			"aud": _SETTINGS.jwt_audience,
+		},
+		key=_SETTINGS.jwt_secret_key,
+		algorithm=_SETTINGS.jwt_algorithm,
+	)
+	assert _VERIFIER.decode(token) is None
+
+
+def test_decode_token_version_preserved() -> None:
+	token = _ISSUER.issue(user_id=TEST_USER_ID, username="jane", role="user", token_version=5)
+	decoded = _VERIFIER.decode(token)
+	assert decoded is not None
+	assert decoded.token_version == 5

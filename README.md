@@ -17,7 +17,7 @@ Built with FastAPI, Pydantic validation, async SQLAlchemy persistence via [async
 - **Valkey** — authenticated-user cache (required at runtime)
 - **JWT + Argon2** — login and password hashing
 - **Alembic** — schema migrations
-- **pytest** — 148 tests, **90%** line coverage gate on `todos_app`
+- **pytest** — 174 tests, **90%** line coverage gate on `todos_app`
 - **Podman Compose or Docker Compose** — local Valkey + PostgreSQL (scripts accept either `podman compose` or `docker compose`)
 
 > **Security — demo only**
@@ -48,15 +48,15 @@ From the project root (see [Getting started](docs/getting-started.md) for full d
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # set JWT_SECRET_KEY and POSTGRES_PASSWORD
-./scripts/migrate.sh     # ensure infra, apply Alembic migrations
-./scripts/seed.sh        # optional — demo users jane/admin, password changeme
+cp .env.example .env   # set JWT_SECRET_KEY, POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB, VALKEY_PASSWORD
+./scripts/database/migrate.sh     # ensure infra, apply Alembic migrations
+./scripts/database/seed.sh        # optional — demo users jane/admin, password changeme
 ./scripts/start.sh       # host API with hot reload
 ```
 
-Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/wipe.sh` removes containers and volumes for a full reset; `./scripts/migrate.sh` and `./scripts/seed.sh` work the same for host-app and full-stack paths.
+Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/database/wipe.sh` removes containers and volumes for a full reset; `./scripts/database/migrate.sh` and `./scripts/database/seed.sh` work the same for host-app and full-stack paths.
 
-Open `http://localhost:${API_PORT:-8000}/docs` for interactive API docs (local environment only; `API_PORT` from `.env`).
+Open `http://localhost:${API_PORT}/docs` for interactive API docs (local environment only; `API_PORT` from `config/ports.env`).
 
 ### Cursor MCP (agent tools)
 
@@ -76,9 +76,9 @@ The MCP uses its **own** `.venv` in `mcp/todos-backend/` (not global Python, not
 Same infra plus an app container via [`docker-compose.app.base.yml`](docker-compose.app.base.yml) + [`docker-compose.app.with-infra.yml`](docker-compose.app.with-infra.yml):
 
 ```bash
-cp .env.example .env   # set JWT_SECRET_KEY and POSTGRES_PASSWORD
+cp .env.example .env   # set JWT_SECRET_KEY, POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB, VALKEY_PASSWORD
 ./scripts/container/up.sh
-./scripts/seed.sh        # optional — demo data
+./scripts/database/seed.sh        # optional — demo data
 ```
 
 Path B rewrites loopback `DATABASE_URL` and `VALKEY_URL` to in-network service names inside the container. Host `.env` uses `127.0.0.1`.
@@ -110,9 +110,12 @@ See [docs/architecture.md](docs/architecture.md) for the full layered layout, pa
 
 ```text
 todo/
+├── config/              # ports.env (committed port defaults)
 ├── docs/                # Guides, architecture reference, api.http samples
 ├── alembic/             # Alembic env.py and version scripts
-├── scripts/             # start, migrate, wipe, seed, test, lint, verify_stack helpers
+├── scripts/             # start, database, container, quality, verify
+├── scripts/quality/     # checks, tests, ruff, pyright (+ internal gate helpers)
+├── scripts/verify/      # verify_stack (+ internal scenario helpers)
 ├── scripts/container/   # Podman Compose: up, deploy, down, logs, build
 ├── mcp/todos-backend/   # Cursor MCP server (API + lifecycle tools)
 ├── tests/               # pytest unit and integration suites

@@ -14,7 +14,7 @@ Public signup (`POST /users`) always creates accounts with `role=user`. The sign
 
 ### Local development
 
-Run [`./scripts/seed.sh`](database.md#seeding), then log in as **`admin` / `changeme`**. Seed SQL inserts that user directly (`default_users.sql`).
+Run [`./scripts/database/seed.sh`](database.md#seeding), then log in as **`admin` / `changeme`**. Seed SQL inserts that user directly (`default_users.sql`).
 
 To promote another account without re-seeding:
 
@@ -32,6 +32,6 @@ Provision the **first** admin outside the API:
 1. Insert a row into `users` with `role='admin'`, `is_active=true`, and an Argon2 password hash (same columns as `default_users.sql`).
 2. Or register with `POST /users`, then set `role='admin'` on that row in the database.
 
-After the first admin exists, log in and use `PATCH /users/{user_id}` with `"role": "admin"` to grant admin to other users. Do **not** run `./scripts/seed.sh` in deployed environments.
+After the first admin exists, log in and use `PATCH /users/{user_id}` with `"role": "admin"` to grant admin to other users. Do **not** run `./scripts/database/seed.sh` in deployed environments.
 
 ← [Project README](../README.md)
