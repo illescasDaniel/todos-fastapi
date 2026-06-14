@@ -17,7 +17,7 @@ _valkey_wait_for_ready() {
 	echo "Waiting for Valkey to accept connections..."
 	while ((retries > 0)); do
 		if (
-			cd "$PROJECT_ROOT" || exit || exit
+			cd "$PROJECT_ROOT" || exit
 			infra_compose exec -T valkey valkey-cli "${auth_args[@]}" ping
 		) &>/dev/null; then
 			return 0

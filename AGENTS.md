@@ -105,6 +105,8 @@ After substantive code changes, run the combined check script and fix **all** re
 
 Or use the `run-checks` skill with the same sequence: `run.sh --fix`, then `run.sh`.
 
+**Cursor agent sandbox:** run `./scripts/quality/checks.sh` (and `--full` / `verify_stack.sh`) via the Shell tool with **full permissions** (`required_permissions: ["all"]`). Default sandbox blocks repo `.env` (secrets) and `.venv/` (see `.cursorignore`); gate needs both for audit, pytest bootstrap, and Podman. Do not remove those ignore entries — unsandbox the command instead. Shell-only lint (`./scripts/quality/shellcheck.sh`) usually passes in the default sandbox.
+
 - Runs all steps each time; prints a final summary report; emits GHA annotations when `GITHUB_ACTIONS=true`. Exit 1 only on errors (warnings-only passes).
 - `./scripts/quality/checks.sh --full` — `--fix` plus `./scripts/verify/verify_stack.sh` (local only, not CI); still re-run without flags afterward to confirm if you changed code during the gate.
 - Individual steps: `ruff-check-format`, `run-pyright`, `run-tests`, `./scripts/quality/ruff.sh`, `./scripts/quality/pyright.sh` (MCP tests and dependency audit run only via `checks.sh`).

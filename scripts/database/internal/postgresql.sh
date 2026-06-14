@@ -13,7 +13,7 @@ _postgres_wait_for_ready() {
 	echo "Waiting for PostgreSQL to accept connections..."
 	while ((retries > 0)); do
 		if (
-			cd "$PROJECT_ROOT" || exit || exit
+			cd "$PROJECT_ROOT" || exit
 			infra_compose exec -T postgres pg_isready -U "${POSTGRES_USER:?set POSTGRES_USER in .env}" -d "${POSTGRES_DB:?set POSTGRES_DB in .env}"
 		) &>/dev/null; then
 			return 0
