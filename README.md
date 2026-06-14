@@ -82,6 +82,19 @@ Path B rewrites loopback `DATABASE_URL` and `VALKEY_URL` to in-network service n
 
 Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Path C): copy [`.env.production.example`](.env.production.example) to `.env`, then `deploy.sh` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
 
+## Quality checks (CI)
+
+The CI badge runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every push and pull request to `main`. The **test** job is the same gate you run locally:
+
+```bash
+./scripts/quality/checks.sh          # check-only (matches CI)
+./scripts/quality/checks.sh --fix    # Ruff autofix/format, then gate
+```
+
+Steps: dependency audit → Ruff → ShellCheck + shfmt (`shellcheck.sh`) → basedpyright → MCP tests → pytest with coverage (90% line gate on `todos_app`). After substantive changes, run `--fix` once, then `checks.sh` again to confirm clean. `--fix` also runs Ruff and shfmt on shell scripts. Optional `./scripts/quality/checks.sh --full` adds local stack verification (not in CI).
+
+Individual steps (`ruff.sh`, `shellcheck.sh`, `pyright.sh`, `tests.sh`) and stack verification are documented in [Development](docs/development.md). CI installs ShellCheck and shfmt before the gate; a separate job scans the base Python image with Trivy (CVE gate — not part of `checks.sh`).
+
 ## Documentation
 
 | Guide | Contents |
@@ -90,7 +103,7 @@ Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Pat
 | [Database](docs/database.md) | PostgreSQL, Alembic, seeding |
 | [Authentication](docs/authentication.md) | JWT login, admin provisioning, sample users, [api.http](docs/api.http) |
 | [API reference](docs/api.md) | OpenAPI URLs, pagination, route tables |
-| [Development](docs/development.md) | Ruff, pytest, coverage, [stack verification](docs/development.md#stack-verification) |
+| [Development](docs/development.md) | [`checks.sh`](docs/development.md#combined-quality-gate), Ruff, pytest, coverage, [stack verification](docs/development.md#stack-verification) |
 | [Deployment](docs/deployment.md) | Podman image, Compose, staging/production |
 | [Architecture](docs/architecture.md) | Hexagonal layout, DI, code conventions |
 | [MCP server](docs/mcp.md) | Cursor agent tools for the API and local dev stack |
