@@ -1,0 +1,51 @@
+# Base configuration — committed defaults. Set secrets in config/profiles/<name>.toml overlays.
+app_env = "local"
+
+[api]
+host = "127.0.0.1"
+port = 8000
+pagination_default_limit = 20
+pagination_max_limit = 100
+body_max_bytes = 1048576
+rate_limit_auth_per_minute = 20
+rate_limit_users_per_minute = 10
+
+[jwt]
+secret_key = ""
+algorithm = "HS256"
+expire_minutes = 60
+issuer = "todos-api"
+audience = "todos-client"
+
+[argon2]
+time_cost = 3
+memory_cost = 65536
+parallelism = 4
+
+[postgres]
+port = 5432
+user = "todos"
+db = "todos"
+password = ""
+url = ""
+compose_url = ""
+test_url = ""
+
+[valkey]
+port = 6379
+password = ""
+url = ""
+compose_url = ""
+auth_user_cache_ttl_seconds = 120
+
+[compose]
+infra_bind = "127.0.0.1"
+app_bind = "127.0.0.1"
+
+[mcp]
+api_base_url = "http://127.0.0.1:8000"
+allow_destructive = false
+allow_remote_api = false
+
+[deploy]
+run_migrations = true

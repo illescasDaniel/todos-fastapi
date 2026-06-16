@@ -1,6 +1,6 @@
 import pytest
 
-from factories import TEST_ACTOR_ID, TEST_TODO_ID, TEST_TODO_ID_B, TEST_USER_ID
+from factories import TEST_TODO_ID, TEST_TODO_ID_B, TEST_USER_ID
 from todos_app.api.todos import mappers
 from todos_app.api.todos.schemas import TodoCreate, TodoPatch, TodoUpdate
 from todos_app.domain.todos.entity import Todo
@@ -12,15 +12,15 @@ pytestmark = pytest.mark.unit
 def test_given_minimal_create_body_when_mapping_to_entity_then_maps_null_optionals() -> None:
 	# given
 	body = TodoCreate(title="Task only")
-	owner_id = TEST_ACTOR_ID
 
 	# when
-	entity = mappers.create_to_entity(body, owner_id=owner_id)
+	entity = mappers.create_to_entity(body)
 
 	# then
 	assert entity.title == "Task only"
 	assert entity.description is None
 	assert entity.priority is None
+	assert entity.owner_id is None
 
 
 def test_given_full_create_body_when_mapping_to_entity_then_maps_all_fields() -> None:
@@ -31,10 +31,9 @@ def test_given_full_create_body_when_mapping_to_entity_then_maps_all_fields() ->
 		priority="high",
 		completed=True,
 	)
-	owner_id = TEST_ACTOR_ID
 
 	# when
-	entity = mappers.create_to_entity(body, owner_id=owner_id)
+	entity = mappers.create_to_entity(body)
 
 	# then
 	assert entity.id is None
@@ -42,7 +41,7 @@ def test_given_full_create_body_when_mapping_to_entity_then_maps_all_fields() ->
 	assert entity.description == "Details"
 	assert entity.priority == "high"
 	assert entity.completed is True
-	assert entity.owner_id == TEST_ACTOR_ID
+	assert entity.owner_id is None
 
 
 def test_given_todo_entity_when_mapping_to_response_then_maps_fields() -> None:

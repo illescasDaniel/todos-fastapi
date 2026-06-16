@@ -28,21 +28,33 @@ verify_run_bare_metal() {
 
 	verify_load_local_profile
 	cd "$PROJECT_ROOT" || return
+
 	verify_load_database_helpers
 
+	# Path B app container binds API_PORT; host bare-metal needs a clean port.
+	podman stop todos-app 2>/dev/null || true
+	podman rm -f todos-app 2>/dev/null || true
+
 	database_reset_container
+	database_ensure_ready
 
 	trap verify_bare_metal_cleanup EXIT INT TERM HUP
 
-	"$PROJECT_ROOT/scripts/database/migrate.sh"
-	"$PROJECT_ROOT/scripts/database/seed.sh"
+	unset TODOS_COMPOSE
+	database_clear_settings_cache
+
+	verify_run_alembic_upgrade
+	verify_run_seeding
 
 	if [[ "$skip_http" != "true" ]]; then
 		verify_port_available "$VERIFY_API_PORT"
+		database_clear_settings_cache
 		# shellcheck disable=SC1091
 		source "$PROJECT_ROOT/.venv/bin/activate"
 		export PYTHONPATH=src
+		unset TODOS_COMPOSE
 		export JWT_SECRET_KEY="${JWT_SECRET_KEY:?set JWT_SECRET_KEY via env profile}"
+		export POSTGRES_URL VALKEY_URL
 		fastapi run --entrypoint todos_app.main:app --host "$VERIFY_API_HOST" --port "$VERIFY_API_PORT" &
 		VERIFY_BARE_METAL_API_PID=$!
 		verify_wait_for_health "http://${VERIFY_API_HOST}:${VERIFY_API_PORT}"

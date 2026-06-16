@@ -1,243 +1,176 @@
 # Getting started
 
-**On this page:** [Setup and installation](#setup-and-installation) · [Running the server](#running-the-server) · [Podman Compose full stack](#podman-compose-local-full-stack)
+**On this page:** [Setup](#setup-and-installation) · [Run server](#running-the-server) · [Path B compose](#podman-compose--path-b-local-full-stack)
 
-**Primary dev path:** infra-only Compose ([`docker-compose.infra.yml`](../docker-compose.infra.yml) — Valkey + PostgreSQL) + host app via `./scripts/start.sh`. See [Deployment — Local Podman Compose](deployment.md#local-podman-compose).
+**Default dev:** infra Compose ([`docker-compose.infra.yml`](../docker-compose.infra.yml)) + host app (`./scripts/start.sh`). [Deployment — Local Podman Compose](deployment.md#local-podman-compose).
 
-Local development uses Podman Compose for Valkey and PostgreSQL. The host app connects to both on `127.0.0.1`. The same `./scripts/database/migrate.sh`, `./scripts/database/seed.sh`, and `./scripts/database/wipe.sh` commands apply to host-app and full-stack workflows.
+Podman Compose for Valkey + Postgres on `127.0.0.1`. Same `migrate.sh` / `seed.sh` / `wipe.sh` for host-app and full-stack.
 
-To keep your global Python environment clean, install all dependencies inside a virtual environment (`.venv`).
+Use `.venv` — do not install globally.
 
 ## Setup and installation
 
-**Requires Python 3.14+** (stdlib `uuid.uuid7()` for primary keys; matches the [Dockerfile](../Dockerfile) used by Podman Compose).
+**Python 3.14+** (stdlib `uuid.uuid7()`; matches [Dockerfile](../Dockerfile)).
 
-### 1. Create a virtual environment
-
-Navigate to the project root directory and run the following command to create a virtual environment named `.venv` (Python **3.14+**):
+### 1. Virtual environment
 
 ```bash
 python3.14 -m venv .venv
 ```
 
-If `python3.14` is not on your `PATH`, use any 3.14 interpreter (for example `python3 -m venv .venv` after confirming `python3 --version`).
+No `python3.14`? Any 3.14 interpreter (`python3 --version`).
 
-### 2. Activate the virtual environment
+### 2. Activate
 
-Before installing dependencies or running the server, activate the virtual environment:
+- **Linux / macOS:** `source .venv/bin/activate`
+- **Windows CMD:** `.venv\Scripts\activate.bat`
+- **Windows PowerShell:** `.venv\Scripts\Activate.ps1`
 
-- **Linux / macOS:**
-  ```bash
-  source .venv/bin/activate
-  ```
-- **Windows (Command Prompt):**
-  ```cmd
-  .venv\Scripts\activate.bat
-  ```
-- **Windows (PowerShell):**
-  ```powershell
-  .venv\Scripts\Activate.ps1
-  ```
+Prompt shows `(.venv)`.
 
-_(You will see `(.venv)` prepended to your command line prompt, indicating the virtual environment is active)._
-
-### 3. Install dependencies
-
-With the virtual environment active, install the dependencies listed in `pyproject.toml` in editable mode:
-
-- **For standard usage (FastAPI, asyncpg, and server dependencies):**
-  ```bash
-  pip install -e .
-  ```
-- **For development (includes Ruff, pytest, and pytest-asyncio):**
-  ```bash
-  pip install -e ".[dev]"
-  ```
-
-_Note: The `-e` (editable) flag allows you to make changes to the source code without needing to reinstall the package._
-
-### 4. Reinstall the package
-
-After you change dependencies in `pyproject.toml`, uninstall and reinstall the project in `.venv` with:
+### 3. Install
 
 ```bash
-chmod +x scripts/reinstall.sh   # once, if needed
-./scripts/reinstall.sh                    # pip install -e .
-./scripts/reinstall.sh dev                # pip install -e ".[dev]"
+pip install -e .           # runtime
+pip install -e ".[dev]"    # + Ruff, pytest
 ```
 
-The script activates `.venv`, removes `fastapi-todos`, then installs again in editable mode. Run it from the project root (same as the other `scripts/` utilities).
+`-e` = editable; code changes without reinstall.
 
-Runtime dependencies (from `pyproject.toml`):
+### 4. Reinstall after dep changes
+
+```bash
+chmod +x scripts/reinstall.sh   # once
+./scripts/reinstall.sh          # pip install -e .
+./scripts/reinstall.sh dev      # pip install -e ".[dev]"
+```
+
+Runtime deps:
 
 | Package | Role |
 |---------|------|
-| `sqlalchemy` | Async ORM and query API (`AsyncSession`, `create_async_engine`) |
-| `asyncpg` | Async PostgreSQL driver (`postgresql+asyncpg://…`) |
-| `greenlet` | Required by SQLAlchemy for sync bridges (e.g. `run_sync` during schema creation) |
-| `argon2-cffi` | Password hashing for user registration and login |
-| `PyJWT` | Issue and verify JWT access tokens |
-| `valkey` | Auth user cache (required at runtime; infra via `docker-compose.infra.yml`) |
+| `sqlalchemy` | Async ORM |
+| `asyncpg` | Postgres driver |
+| `greenlet` | SQLAlchemy sync bridges |
+| `argon2-cffi` | Password hashing |
+| `PyJWT` | JWT issue/verify |
+| `valkey` | Auth cache (required; infra via compose) |
 
-### 5. Set up your working environment
+### 5. Working environment
 
-After dependencies are installed, configure the app and prepare the database **before** starting the API. The server does not create tables on startup — schema is applied with Alembic (see [Database migrations (Alembic)](database.md#database-migrations-alembic)).
+Configure **before** API start — server does not create tables. Schema via Alembic ([Database](database.md#database-migrations-alembic)).
 
-**1. Environment profile**
+**Profile**
 
-Copy [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py) to `src/env_config/profiles/local.py` (gitignored) and set secrets:
+Copy [`example.toml`](../config/profiles/example.toml) → `local.toml`. Set:
 
-- `jwt_secret_key` — generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
-- `postgres_password`, `postgres_user`, `postgres_db`, `database_url`
-- `valkey_password`, `valkey_url`
-- Ports/bind addresses: `api_port`, `postgres_port`, `valkey_port`, `compose_*_bind`
+- `[jwt] secret_key` — `python -c "import secrets; print(secrets.token_urlsafe(64))"`
+- `[postgres] password`, `user`, `db`, `url`
+- `[valkey] password`, `url`
+- Ports: `[api] port`, `[postgres] port`, `[valkey] port`, `[compose] infra_bind`, `app_bind`
 
 ```bash
-export ENV_PROFILE=local   # required before running dev scripts
+export ENV_PROFILE=local
 ```
 
-Tests and CI use `ENV_PROFILE=test` ([`profiles/test.py`](../src/env_config/profiles/test.py)). You can add more local profiles (e.g. `local2.py` with different ports) and set `ENV_PROFILE=local2` — see [Configuration and secrets](architecture.md#profile-selection-env_profile).
+Tests/CI: `ENV_PROFILE=test` ([`test.toml`](../config/profiles/test.toml)). Extra profiles (`local2.toml`): [Configuration](architecture.md#profile-selection-env_profile).
 
-**2. Create database tables**
-
-Tables come from Alembic migrations, not from starting the server.
+**Migrate**
 
 ```bash
-chmod +x scripts/database/migrate.sh   # once, if needed
+chmod +x scripts/database/migrate.sh   # once
 ./scripts/database/migrate.sh
 ```
 
-`./scripts/database/migrate.sh` ensures Valkey and PostgreSQL are up, then runs Alembic inside the app container.
+Ensures infra, runs Alembic in app container → `users`, `todos`, `alembic_version`.
 
-This runs `alembic upgrade head` and creates `users` and `todos` (and the `alembic_version` table).
+> Fresh DB: migrate before `./scripts/start.sh`. Full reset: `./scripts/database/wipe.sh` → migrate (optional seed).
 
-> **Run order:** apply schema with `./scripts/database/migrate.sh` before `./scripts/start.sh` on a fresh database. Use `./scripts/database/wipe.sh` for a full volume reset (`compose down -v`), then migrate (and optionally seed) again.
-
-**3. Optional: load demo data**
-
-To reset the DB and insert sample users and todos (`jane` / `changeme`, `admin` / `changeme`):
+**Seed (optional)**
 
 ```bash
 ./scripts/database/seed.sh
 ```
 
-Seeding runs migrations after reset, so you can use it instead of step 2 when you want a fresh DB with demo records. See [Seeding](database.md#seeding) for details. Public `POST /users` signup always creates `role=user`; the seeded **`admin` / `changeme`** account is the local admin — see [Authentication — Admin users](authentication.md#admin-users).
+Demo: `jane`/`changeme`, `admin`/`changeme`. Seed runs migrate — can replace step 2. [Seeding](database.md#seeding). Admin account: [Authentication — Admin users](authentication.md#admin-users).
 
-To wipe schema and data without re-seeding (empty database), run `./scripts/database/wipe.sh` and then `./scripts/database/migrate.sh`. See [Wiping the database](database.md#wiping-the-database).
+Empty DB: `wipe.sh` → `migrate.sh`. [Wipe](database.md#wiping-the-database).
 
-**4. Start the API**
-
-```bash
-chmod +x scripts/start.sh   # once, if needed
-./scripts/start.sh
-```
-
-**Quick reference — fresh environment from zero:**
+**Start API** — [Running the server](#running-the-server).
 
 | Step | Command |
 |------|---------|
-| Configure env profile | Copy [`example.py`](../src/env_config/profiles/example.py) to `local.py`; set `jwt_secret_key`, `postgres_*`, `valkey_*`, URLs |
-| Create tables | `./scripts/database/migrate.sh` |
-| Demo data (optional) | `./scripts/database/seed.sh` |
-| Run API | `./scripts/start.sh` |
+| Profile | `example.toml` → `local.toml`; secrets + URLs |
+| Tables | `./scripts/database/migrate.sh` |
+| Demo (opt) | `./scripts/database/seed.sh` |
+| API | `./scripts/start.sh` |
 
 ## Running the server
 
-Make sure your virtual environment is active before starting the server.
+`.venv` active; [environment](#5-working-environment) done (migrate on fresh DB).
 
-### Option A: Using the start script
-
-We provide a `scripts/start.sh` utility script. First, ensure it has execution permissions:
+### Option A: start script (recommended)
 
 ```bash
-chmod +x scripts/start.sh
+chmod +x scripts/start.sh   # once
+./scripts/start.sh          # dev, hot reload
+./scripts/start.sh pro      # production mode
 ```
-
-- **Development Mode** (Runs with hot-reloading enabled):
-  ```bash
-  ./scripts/start.sh
-  ```
-- **Production Mode**:
-  ```bash
-  ./scripts/start.sh pro
-  ```
 
 | Script | Role |
 |--------|------|
-| `scripts/database/migrate.sh` | Ensure Valkey + PostgreSQL infra; apply or inspect Alembic revisions via app container (`revision` autogenerate uses host `.venv`) |
-| `scripts/database/wipe.sh` | Remove all Compose containers and named volumes (full reset) |
-| `scripts/database/seed.sh` | Reset DB, migrate, load demo data (via app container) |
-| `scripts/start.sh` | Ensure infra, run host API with hot reload |
+| `migrate.sh` | Infra + Alembic (autogenerate on host `.venv`) |
+| `wipe.sh` | Remove containers + volumes |
+| `seed.sh` | Reset + demo data |
+| `start.sh` | Infra + host API |
 
-All share `scripts/database/internal/setup.sh` and `ensure.sh`. For a new machine or empty database, follow [Set up your working environment](#5-set-up-your-working-environment) first.
+Shared: `scripts/database/internal/setup.sh`, `ensure.sh`.
 
-### Option B: Running the FastAPI CLI directly
+### Option B: FastAPI CLI
 
-You can also bypass the script and call the `fastapi` command line tool directly (with `ENV_PROFILE=local` and `PYTHONPATH=src` so `env_config` and `todos_app` resolve):
+`ENV_PROFILE=local` + `PYTHONPATH=src`:
 
-- **Development Mode** (auto-reload):
-  ```bash
-  export ENV_PROFILE=local PYTHONPATH=src
-  fastapi dev --entrypoint todos_app.main:app --port "$API_PORT"
-  ```
-- **Production Mode**:
-  ```bash
-  export ENV_PROFILE=local PYTHONPATH=src
-  fastapi run --entrypoint todos_app.main:app --port "$API_PORT"
-  ```
+```bash
+export ENV_PROFILE=local PYTHONPATH=src
+fastapi dev --entrypoint todos_app.main:app --port "$API_PORT"   # reload
+fastapi run --entrypoint todos_app.main:app --port "$API_PORT"   # prod
+```
 
-Load shell exports first if `API_PORT` is unset: `eval "$(PYTHONPATH=src python -m env_config.export --shell)"`.
+Unset `API_PORT`? `set -a && source .env && set +a` after `./scripts/database/migrate.sh` or any script that loads `ENV_PROFILE` via [`load_env.sh`](../scripts/internal/load_env.sh).
 
-### Option C: Running `main.py` directly
-
-Since `main.py` is in the `src/` directory, you can launch it using python:
+### Option C: main.py
 
 ```bash
 python src/todos_app/main.py
 ```
 
-The API does **not** create or migrate schema on startup. Run [`./scripts/database/migrate.sh`](database.md#database-migrations-alembic) before `./scripts/start.sh` (see [PostgreSQL](database.md#postgresql)).
+No schema on startup — run [`migrate.sh`](database.md#database-migrations-alembic) first.
 
 ## Podman Compose — Path B (local full stack)
 
-Prod-like local development: same infra as Path A plus an app container. Requires rootless Podman — run `./scripts/install_podman.sh`. See [Deployment](deployment.md) for all three paths (A/B/C) and production deploy.
+Infra + app container. Rootless Podman: `./scripts/install_podman.sh`. Paths A/B/C: [Deployment](deployment.md).
 
-**1. Environment profile**
+1. `example.toml` → `local.toml` (secrets)
+2. `./scripts/container/up.sh`
+3. Optional: `./scripts/database/seed.sh`
 
-Copy [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py) to `src/env_config/profiles/local.py` (gitignored) and set secrets:
-
-**2. Start the stack**
-
-```bash
-chmod +x scripts/container/*.sh   # once
-./scripts/container/up.sh
-```
-
-**3. Optional: demo data**
-
-```bash
-./scripts/database/seed.sh
-```
-
-For **production deploy** (Path C), copy [`production.example.py`](../src/env_config/profiles/production.example.py) to `src/env_config/profiles/production.py`, set `ENV_PROFILE=production`, then use `./scripts/container/deploy.sh` — see [Deployment — Path C example](deployment.md#path-c--app-only-compose-primary).
-
-### Container scripts (Path B)
+Path C: [`production.example.toml`](../config/profiles/production.example.toml) → `production.toml`, `ENV_PROFILE=production`, `./scripts/container/deploy.sh` — [Path C](deployment.md#path-c--app-only-compose-primary).
 
 | Script | Action |
 |--------|--------|
-| `./scripts/container/up.sh` | Start stack (`compose start` if stopped, else `up -d --build`) |
-| `./scripts/container/down.sh` | Stop stack (containers kept) |
-| `./scripts/container/down.sh --remove` | Remove containers and network; volumes kept |
-| `./scripts/database/wipe.sh` | Remove local infra containers and named volumes (full reset) |
-| `./scripts/database/seed.sh` | Reset DB and load demo users/todos (via app container) |
-| `./scripts/container/logs.sh` | Follow app logs |
+| `up.sh` | Start stack |
+| `down.sh` | Stop (containers kept) |
+| `down.sh --remove` | Remove containers/network; volumes kept |
+| `wipe.sh` | Full volume reset |
+| `seed.sh` | Demo data |
+| `logs.sh` | Follow app logs |
 
-Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT}/docs` (`api_port` in your env profile).
+Migrations on container start (`DEPLOY_RUN_MIGRATIONS=true`). Docs: `http://localhost:${API_PORT}/docs`.
 
-**Infra-only + host app:** use `./scripts/start.sh` — see [Deployment](deployment.md#local-podman-compose).
+Infra-only + host app: `./scripts/start.sh` — [Deployment](deployment.md#local-podman-compose).
 
 ## Architecture diagrams (optional)
 
-Rendered SVG diagrams are **pre-committed** under [`docs/images/`](images/) — you do not need PlantUML to run the API. To regenerate from sources, see [Architecture — Architecture diagrams](architecture.md#architecture-diagrams). Prerequisites: Java 17+ and PlantUML via your package manager (`pacman -S plantuml graphviz`, `apt install plantuml graphviz`, or `brew install plantuml graphviz`) or a local JAR at `tools/plantuml.jar`.
+Pre-committed SVGs in [`docs/images/`](images/). Regenerate: [Architecture — diagrams](architecture.md#architecture-diagrams). Needs Java 17+ and PlantUML (`pacman -S plantuml graphviz`, etc.) or `tools/plantuml.jar`.
 
 ← [Project README](../README.md)

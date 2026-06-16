@@ -1,0 +1,23 @@
+# Template for profiles/local.toml — copy and edit secrets (do not set ENV_PROFILE=example).
+#
+#   cp config/profiles/example.toml config/profiles/local.toml
+#   export ENV_PROFILE=local
+#
+# Generate JWT secret: python -c "import secrets; print(secrets.token_urlsafe(64))"
+
+[jwt]
+secret_key = "" # generate with python -c "import secrets; print(secrets.token_urlsafe(64))"
+
+[postgres]
+password = ""
+url = "" # postgresql+asyncpg://todos:PASSWORD@127.0.0.1:5432/todos (Path A host)
+compose_url = "" # postgresql+asyncpg://todos:PASSWORD@postgres:5432/todos (Path B app container)
+test_url = ""
+
+[valkey]
+password = ""
+url = "" # valkey://:PASSWORD@127.0.0.1:6379/0 (Path A host)
+compose_url = "" # valkey://:PASSWORD@valkey:6379/0 (Path B app container)
+
+[mcp]
+allow_destructive = false

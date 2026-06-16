@@ -6,10 +6,10 @@
 *.p12
 *.pfx
 # Secrets — gitignored profile modules (see .gitignore whitelist under profiles/)
-src/env_config/profiles/*
-!src/env_config/profiles/example.py
-!src/env_config/profiles/production.example.py
-!src/env_config/profiles/test.py
+config/profiles/*
+!config/profiles/example.toml
+!config/profiles/production.example.toml
+!config/profiles/test.toml
 
 # Virtual environments
 .venv/

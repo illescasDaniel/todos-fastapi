@@ -61,7 +61,7 @@ def assert_seed_allowed() -> None:
 	url = make_url(database_url)
 	host = url.host or "(no host)"
 	raise RuntimeError(
-		"Refusing to seed: DATABASE_URL must point to a local development database only.\n"
+		"Refusing to seed: POSTGRES_URL must point to a local development database only.\n"
 		"  PostgreSQL: host must be 127.0.0.1, localhost, ::1,\n"
 		"    or Compose service name postgres with APP_ENV=local\n"
 		f"  Configured URL host: {host}"

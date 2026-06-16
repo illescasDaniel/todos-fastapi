@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir /wheels/*.whl \
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY config ./config
 COPY src ./src
 COPY scripts/container/internal/entrypoint.sh ./scripts/container/internal/entrypoint.sh
 

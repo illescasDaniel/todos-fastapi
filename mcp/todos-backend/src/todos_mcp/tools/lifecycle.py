@@ -16,7 +16,7 @@ _DESTRUCTIVE_DISABLED = {"error": ("Destructive operations are disabled. Set MCP
 
 
 def _destructive_allowed() -> bool:
-	from env_config.loader import get_env_settings
+	from todos_app.core.config.loader import get_env_settings
 
 	return get_env_settings().mcp.allow_destructive
 
@@ -24,12 +24,12 @@ def _destructive_allowed() -> bool:
 def register(mcp: FastMCP, settings: Settings) -> None:
 	@mcp.tool()
 	async def stack_health() -> str:
-		"""Check whether the API responds at TODOS_API_BASE_URL/health (curl)."""
+		"""Check whether the API responds at MCP_API_BASE_URL/health (curl)."""
 		return stack_health_curl(settings).to_json()
 
 	@mcp.tool()
 	async def open_api_docs() -> str:
-		"""Open Swagger UI at TODOS_API_BASE_URL/docs in the default system browser."""
+		"""Open Swagger UI at MCP_API_BASE_URL/docs in the default system browser."""
 		return open_api_docs_in_browser(settings).to_json()
 
 	@mcp.tool()

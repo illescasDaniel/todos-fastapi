@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from env_config.loader import apply_dotted_overrides
-from env_config.schema import (
+from todos_app.core.config.loader import apply_dotted_overrides
+from todos_app.core.config.schema import (
 	ApiSettings,
 	Argon2Settings,
 	ComposeSettings,
@@ -78,12 +78,14 @@ def _default_env_settings() -> EnvSettings:
 			db="todos",
 			password="local-db-pass",
 			url="postgresql+asyncpg://todos:local-db-pass@127.0.0.1:5432/todos",
+			compose_url="postgresql+asyncpg://todos:local-db-pass@postgres:5432/todos",
 			test_url="postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test",
 		),
 		valkey=ValkeySettings(
 			port=6379,
 			password="local-valkey-pass",
 			url="valkey://:local-valkey-pass@127.0.0.1:6379/0",
+			compose_url="valkey://:local-valkey-pass@valkey:6379/0",
 			auth_user_cache_ttl_seconds=120,
 		),
 		compose=ComposeSettings(infra_bind="127.0.0.1", app_bind="127.0.0.1"),

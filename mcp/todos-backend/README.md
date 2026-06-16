@@ -45,7 +45,7 @@ Cursor’s `command` points at `mcp/todos-backend/.venv/bin/python` (via `${work
 ## Prerequisites
 
 - Python **3.14+**
-- [`src/env_config/profiles/local.py`](../../src/env_config/profiles/local.py) with secrets; `export ENV_PROFILE=local`
+- [`config/profiles/local.toml`](../../config/profiles/local.toml) with secrets; `export ENV_PROFILE=local`
 - **Podman** for compose lifecycle tools
 - Running API at `http://127.0.0.1:${API_PORT}` (`api_port` in env profile) for API tools
 
@@ -92,9 +92,11 @@ Protected tools accept optional `access_token`; otherwise they use the token fro
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `todos_api_base_url` | From env profile | API base URL |
-| `ENV_PROFILE` | Yes | Selects profile module |
-| `TODOS_REPO_ROOT` | Yes | Path for lifecycle scripts |
+| `MCP_API_BASE_URL` | From env profile (`mcp.api_base_url`) | API base URL (no trailing slash) |
+| `ENV_PROFILE` | Yes | Selects profile overlay (`config/profiles/<name>.toml`) |
+| `TODOS_REPO_ROOT` | Yes (set in `.cursor/mcp.json`) | Repo root for lifecycle scripts |
+| `MCP_ALLOW_DESTRUCTIVE` | From env profile (`mcp.allow_destructive`) | Enable `db_wipe`, `db_seed`, compose down with volumes |
+| `MCP_ALLOW_REMOTE_API` | From env profile (`mcp.allow_remote_api`) | Allow non-loopback API targets |
 
 ## Tests
 

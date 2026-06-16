@@ -7,3 +7,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    environment:
+      TODOS_COMPOSE: "1"
+    volumes:
+      - ./config/profiles:/app/config/profiles:ro

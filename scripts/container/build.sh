@@ -17,4 +17,4 @@ load_compose_env
 podman build --format docker -t "$image_name" .
 
 echo "Built: $image_name"
-echo "Run: podman run --rm -p ${API_PORT}:8000 -e JWT_SECRET_KEY=... -e DATABASE_URL=... $image_name"
+echo "Run: podman run --rm -p ${API_PORT}:8000 -e JWT_SECRET_KEY=... -e POSTGRES_URL=... $image_name"

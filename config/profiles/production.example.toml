@@ -1,0 +1,22 @@
+# Template for profiles/production.toml on the deploy host — never commit filled production profiles.
+#
+#   cp config/profiles/production.example.toml config/profiles/production.toml
+#   export ENV_PROFILE=production
+
+app_env = "production"
+
+[postgres]
+password = ""
+url = ""
+test_url = ""
+
+[valkey]
+port = 6380
+password = ""
+url = ""
+
+[mcp]
+api_base_url = "https://api.example.com"
+
+[deploy]
+run_migrations = false

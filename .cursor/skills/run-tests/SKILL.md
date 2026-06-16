@@ -26,5 +26,5 @@ Use this skill when the user asks to run tests, verify behavior after code chang
 - Use `./.cursor/skills/run-tests/scripts/run.sh` as the canonical test runner for this skill.
 - Tests bootstrap schema via Alembic `upgrade head` in `tests/conftest.py`.
 - `./scripts/quality/tests.sh` sets `ENV_PROFILE=test`, recreates the PostgreSQL container when test-profile credentials do not match, creates `todos_test` if needed, and stops the container afterward only when the script started it. Skips reset when PostgreSQL already accepts test credentials.
-- Tests load config from [`src/env_config/profiles/test.py`](src/env_config/profiles/test.py) via `tests/conftest.py`; do not rely on `local.py` or hand-edited `.env`.
+- Tests load config from [`config/profiles/test.toml`](config/profiles/test.toml) via `tests/conftest.py`; do not rely on `local.toml` or hand-edited `.env`.
 - Every test module must declare `pytestmark = pytest.mark.unit` or `pytest.mark.integration`.

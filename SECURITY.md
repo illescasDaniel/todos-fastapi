@@ -20,7 +20,7 @@ If you discover a security issue in this project, please **do not** open a publi
 
 Before publishing the repo or deploying beyond localhost:
 
-- [ ] **No production secrets in git** — secret profile modules under `src/env_config/profiles/` are gitignored (whitelist keeps only `example.py`, `production.example.py`, `test.py`); see `.gitignore`.
+- [ ] **No production secrets in git** — secret profile overlays under `config/profiles/` are gitignored (whitelist keeps only `example.toml`, `production.example.toml`, `test.toml`); see `.gitignore`.
 - [ ] **Fresh secrets per environment** — generate a strong `JWT_SECRET_KEY` (32+ characters); never reuse template placeholders from env profile examples.
 - [ ] **Seed scripts local-only** — `./scripts/database/seed.sh` is blocked when `APP_ENV` is `staging` or `production` and for non-local database hosts.
 - [ ] **Database not public** — managed PostgreSQL should not be reachable from the open internet unless your threat model requires it.

@@ -1,259 +1,208 @@
 # Deployment
 
-**On this page:** [Environments](#environments) · [Container image](#container-image) · [Local Podman Compose](#local-podman-compose) · [Staging and production](#staging-and-production) · [Configuration reference](#configuration-reference)
+**On this page:** [Environments](#environments) · [Image](#container-image) · [Local Compose](#local-podman-compose) · [Staging/production](#staging-and-production-path-c) · [Config reference](#configuration-reference)
 
-This project stays **cloud-agnostic**: one portable OCI image and the same environment variables everywhere. No AWS, GCP, or Azure SDKs — pick a host later and inject config from that platform's secret store.
+Cloud-agnostic: one OCI image, same env vars everywhere. No cloud SDKs.
 
-Local development uses **rootless Podman** (same Compose file format as Docker Compose). Install with `./scripts/install_podman.sh` — see [Install Podman](#install-podman) below.
+Local: **rootless Podman** — `./scripts/install_podman.sh`. [Install Podman](#install-podman).
 
-See also: [Getting started](getting-started.md) · [Database](database.md) · [Architecture](architecture.md)
+See: [Getting started](getting-started.md) · [Database](database.md) · [Architecture](architecture.md)
 
 ## Environments
 
-| Environment | Typical use | Database | How config is supplied |
-|-------------|-------------|----------|------------------------|
-| **Local** | Developer machine | PostgreSQL (Compose) | `ENV_PROFILE=local` + gitignored `src/env_config/profiles/local.py`; Compose uses generated `.env` |
-| **Staging** | Pre-production testing | Managed PostgreSQL | Platform env vars / secrets (same keys as local) |
-| **Production** | Live traffic | Managed PostgreSQL | Platform env vars / secrets; rotate `JWT_SECRET_KEY` per environment |
+| Environment | Use | Database | Config |
+|-------------|-----|----------|--------|
+| **Local** | Dev machine | Postgres (Compose) | `ENV_PROFILE=local` + gitignored `local.toml`; Compose `.env` |
+| **Staging** | Pre-prod | Managed Postgres | Platform secrets (same keys) |
+| **Production** | Live | Managed Postgres | Platform secrets; unique `JWT_SECRET_KEY` |
 
-Set `APP_ENV=local|staging|production` as a label for logging and ops; behavior is driven by the other variables (`DATABASE_URL`, `JWT_*`, etc.).
+`APP_ENV=local|staging|production` for logging/ops; behavior from `POSTGRES_URL`, `JWT_*`, etc.
 
 ## Container image
 
-Build a production image from the project root with Podman:
-
 ```bash
 ./scripts/container/build.sh
-# or: podman build --format docker -t todos-api .
+# podman build --format docker -t todos-api .
 ```
 
-Use `--format docker` so Podman preserves the Dockerfile `HEALTHCHECK` instruction (ignored in default OCI format).
+`--format docker` preserves Dockerfile `HEALTHCHECK`.
 
-The [Dockerfile](../Dockerfile) (OCI-compatible; built with `podman build`) uses a multi-stage build:
+[Dockerfile](../Dockerfile): multi-stage — builder wheels app; runtime slim Python 3.14, non-root `app`, health on `/health`.
 
-- **Builder** — wheels the app with core deps (`asyncpg`, `valkey`, etc.).
-- **Runtime** — slim Python 3.14 image (stdlib `uuid7`), non-root `app` user, `HEALTHCHECK` on `/health`.
-
-Run standalone (no Compose):
+Standalone:
 
 ```bash
 podman run --rm -p 8000:8000 \
   -e JWT_SECRET_KEY="your-secret" \
-  -e DATABASE_URL="postgresql+asyncpg://user:pass@db-host:5432/todos" \
+  -e POSTGRES_URL="postgresql+asyncpg://user:pass@db-host:5432/todos" \
   -e VALKEY_URL="valkey://valkey-host:6379/0" \
   todos-api
 ```
 
-Point `DATABASE_URL` at your PostgreSQL host and ensure the network can reach it. Migrations run on container start when `RUN_MIGRATIONS=true` (default).
+Migrations on start when `DEPLOY_RUN_MIGRATIONS=true` (default; `[deploy] run_migrations` in profile).
 
 ## Local Podman Compose
 
-Three deployment paths share the same environment variables but use different Compose file sets:
+| Path | When | Compose files | App | DB / Valkey |
+|------|------|---------------|-----|-------------|
+| **A — Host** | Daily dev | `docker-compose.infra.yml` | Host `.venv` / `start.sh` | `127.0.0.1` |
+| **B — Full stack** | Local smoke | infra + `app.base` + `app.with-infra` | Container | In-network `postgres`/`valkey` |
+| **C — Production** | Staging/prod | `app.base` only | Container | External URLs |
 
-| Path | When | Compose files | App runs | DB / Valkey |
-|------|------|---------------|----------|-------------|
-| **A — Host app** | Daily dev (hot reload) | [`docker-compose.infra.yml`](../docker-compose.infra.yml) only | Host `.venv` via `./scripts/start.sh` | Bundled on `127.0.0.1` |
-| **B — Local full stack** | Prod-like local smoke | `docker-compose.infra.yml` + [`docker-compose.app.base.yml`](../docker-compose.app.base.yml) + [`docker-compose.app.with-infra.yml`](../docker-compose.app.with-infra.yml) | App container | Bundled; URLs rewritten to `postgres`/`valkey` |
-| **C — Production** | Staging / production | `docker-compose.app.base.yml` only | App container | External managed URLs from production profile |
+Paths A/B: Valkey + Postgres on `COMPOSE_INFRA_BIND:*`. Path B rewrites loopback URLs inside app container.
 
-Paths A and B use local infra ([`docker-compose.infra.yml`](../docker-compose.infra.yml)): **Valkey** on `COMPOSE_INFRA_BIND:VALKEY_PORT` and **PostgreSQL** on `COMPOSE_INFRA_BIND:POSTGRES_PORT` (from env profile). Path B rewrites loopback `DATABASE_URL` / `VALKEY_URL` to in-network service names inside the app container.
+**Prereqs A/B:** Podman, [`local.toml`](../config/profiles/local.toml) from [`example.toml`](../config/profiles/example.toml), strong `[jwt] secret_key` (≥32 chars), postgres/valkey URLs. `export ENV_PROFILE=local`.
 
-**Prerequisites (Paths A and B):** rootless Podman (`./scripts/install_podman.sh`), [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py) (copy from [`example.py`](../src/env_config/profiles/example.py)) with a strong `jwt_secret_key` (at least 32 characters), postgres/valkey credentials, and explicit URLs. `export ENV_PROFILE=local`.
-
-### Path B — local full stack commands
+### Path B commands
 
 | Command | Action |
 |---------|--------|
-| `./scripts/container/up.sh` | Start full stack (infra + app) |
-| `./scripts/container/down.sh` | Stop stack (fast; containers kept) |
-| `./scripts/container/down.sh --remove` | Remove containers; named volumes kept |
-| `./scripts/database/wipe.sh` | Remove local infra containers and all named volumes (full reset) |
-| `./scripts/database/seed.sh` | Load demo users/todos (local only; via app container) |
-| `./scripts/database/migrate.sh` | Apply Alembic migrations (via app container) |
-| `./scripts/container/logs.sh` | Follow app logs |
-| `./scripts/container/build.sh` | Build app image only |
+| `up.sh` | Full stack |
+| `down.sh` | Stop (containers kept) |
+| `down.sh --remove` | Remove containers; volumes kept |
+| `wipe.sh` | Full volume reset |
+| `seed.sh` | Demo data (local) |
+| `migrate.sh` | Alembic |
+| `logs.sh` | App logs |
+| `build.sh` | App image |
 
-The scripts require a PostgreSQL connection (`database_url` in env profile). For Path B, the app overlay sets in-network URLs; loopback values in `local.py` are correct for the host.
+Scripts need `postgres.url`. Path B overlay sets in-network URLs; loopback in `local.toml` correct for host.
 
 ### Install Podman
 
-On Arch/CachyOS (rootless):
+Arch/CachyOS:
 
 ```bash
 ./scripts/install_podman.sh
-# or: sudo pacman -S --needed podman podman-compose
-systemctl --user enable --now podman.socket   # recommended
+systemctl --user enable --now podman.socket
 podman info --format '{{.Host.Security.Rootless}}'   # expect true
 ```
 
-If binding to ports below 1024 fails as rootless, you may need `net.ipv4.ip_unprivileged_port_start=1024` via `/etc/sysctl.d/` (requires sudo).
+Rootless ports &lt;1024: may need `net.ipv4.ip_unprivileged_port_start=1024` in `/etc/sysctl.d/`.
 
-### `DATABASE_URL`, `VALKEY_URL`, and host alignment (Paths A and B)
+### URLs (Paths A and B)
 
-| Context | `DATABASE_URL` | `VALKEY_URL` |
+| Context | `POSTGRES_URL` | `VALKEY_URL` |
 |---------|----------------|--------------|
-| Host app (Path A) | `postgresql+asyncpg://todos:PASSWORD@127.0.0.1:5432/todos` | `valkey://:PASSWORD@127.0.0.1:6379/0` |
-| App container (Path B) | `postgresql+asyncpg://todos:PASSWORD@postgres:5432/todos` | `valkey://:PASSWORD@valkey:6379/0` |
+| Host (A) | `@127.0.0.1:5432` | `@127.0.0.1:6379` |
+| Container (B) | `@postgres:5432` | `@valkey:6379` |
 
-Set URLs in [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py). Path B scripts rewrite loopback hosts for the app container.
+Set in `local.toml`; Path B scripts rewrite for container.
 
-The API binds to `COMPOSE_APP_BIND:API_PORT` from the env profile; override `compose_app_bind` only if you need LAN access.
+API bind: `COMPOSE_APP_BIND:API_PORT`. Path A: `./scripts/start.sh`.
 
-**Path A — infra-only + host app:** use `./scripts/start.sh` with `ENV_PROFILE=local`.
-
-### Compose (without the wrapper)
-
-`./scripts/container/up.sh` uses Path B. To run Compose directly:
+### Raw Compose
 
 ```bash
-# Path A infra only — Valkey + PostgreSQL
 podman compose -f docker-compose.infra.yml up -d
-
-# Path B — infra + app
 podman compose -f docker-compose.infra.yml -f docker-compose.app.base.yml -f docker-compose.app.with-infra.yml up --build
 ```
 
 ## Staging and production (Path C)
 
-### Running migrations as a pre-deploy step (recommended for production)
+### Migrations pre-deploy (recommended)
 
-By default, `RUN_MIGRATIONS=true` runs Alembic on every container start. This is safe for
-single-replica deployments but can cause issues under multi-replica or zero-downtime rolling
-deployments (concurrent migration attempts, table locks).
+Default `DEPLOY_RUN_MIGRATIONS=true` runs Alembic on every start — OK single-replica; risky multi-replica rolling deploy.
 
-For production, set `run_migrations=false` in your production profile and run migrations as a separate
-one-shot step before rolling out the new image. Scripts export a generated `.env` for Compose; the same vars can be injected via orchestrator secrets instead:
+Production: `run_migrations=false` in profile; migrate before rollout:
 
 ```bash
-# Run migrations before starting/updating the app container
-podman run --rm \
-  --env-file .env \
-  -e RUN_MIGRATIONS=true \
-  todos-api true   # exits after migrations; 'true' is a no-op CMD
-
-# Then deploy the app without re-running migrations
-./scripts/container/deploy.sh  # uses RUN_MIGRATIONS=false from exported profile
+podman run --rm --env-file .env -e DEPLOY_RUN_MIGRATIONS=true todos-api true
+./scripts/container/deploy.sh   # DEPLOY_RUN_MIGRATIONS=false
 ```
 
-Or in a CI/CD pipeline (e.g. GitHub Actions):
+CI/CD:
 
 ```bash
-# Pre-deploy migration step
 podman run --rm \
   -e JWT_SECRET_KEY="$JWT_SECRET_KEY" \
-  -e DATABASE_URL="$DATABASE_URL" \
+  -e POSTGRES_URL="$POSTGRES_URL" \
   -e VALKEY_URL="$VALKEY_URL" \
-  -e RUN_MIGRATIONS=true \
+  -e DEPLOY_RUN_MIGRATIONS=true \
   todos-api true
-
-# Deploy step
 ./scripts/container/deploy.sh
 ```
 
-Use the **same image** built from this repository. Differences are only env vars:
+Same image; env differs:
 
-1. **`JWT_SECRET_KEY`** — cryptographically random (at least 32 characters), unique per environment; never reuse local dev secrets or template placeholders from [`production.example.py`](../src/env_config/profiles/production.example.py). The container entrypoint rejects empty, placeholder, and migration-only values.
-2. **`DATABASE_URL`** — connection string to your managed PostgreSQL instance (not `127.0.0.1`).
-3. **`VALKEY_URL`** — connection string to your managed Valkey/Redis instance (auth cache is required at runtime; not `127.0.0.1`).
-4. **`APP_ENV`** — `staging` or `production`.
-5. **`RUN_MIGRATIONS`** — `true` on deploy if this container should apply Alembic revisions (default); set `false` if migrations run in a separate job.
-6. **`JWT_EXPIRE_MINUTES`** — consider shorter values in production.
+1. **`JWT_SECRET_KEY`** — random ≥32 chars, unique per env; entrypoint rejects placeholders
+2. **`POSTGRES_URL`** — managed Postgres (not loopback)
+3. **`VALKEY_URL`** — managed Valkey (required)
+4. **`APP_ENV`** — `staging` or `production`
+5. **`DEPLOY_RUN_MIGRATIONS`** — `false` if separate migration job
+6. **`JWT_EXPIRE_MINUTES`** — shorter in prod
 
-### Path C — app-only Compose (primary)
+### Path C — app-only Compose
 
-Deploy the app container only — no bundled PostgreSQL or Valkey. Use [`production.example.py`](../src/env_config/profiles/production.example.py) as the template (copy to gitignored `production.py`, not [`example.py`](../src/env_config/profiles/example.py), which is for local development only).
-
-#### Example: deploy from scratch
+[`production.example.toml`](../config/profiles/production.example.toml) → gitignored `production.toml` (not `example.toml`).
 
 ```bash
-# 1. Copy the production env template
-cp src/env_config/profiles/production.example.py src/env_config/profiles/production.py
+cp config/profiles/production.example.toml config/profiles/production.toml
 export ENV_PROFILE=production
-
-# 2. Edit production.py — set at minimum:
-#    app_env=staging|production
-#    jwt_secret_key   (generate: python -c "import secrets; print(secrets.token_urlsafe(64))")
-#    database_url     (managed PostgreSQL — not 127.0.0.1)
-#    valkey_url       (managed Valkey/Redis — not 127.0.0.1)
-
-# 3. Build the image and start the app container
+# Edit: app_env, jwt.secret_key, postgres.url, valkey.url (no loopback)
 ./scripts/container/build.sh
 ./scripts/container/deploy.sh
-
-# 4. Verify health
 curl -sf http://localhost:8000/health
-
-# 5. Day-two operations
-./scripts/container/logs.sh --prod          # follow logs
-./scripts/container/down.sh --prod          # stop (container kept)
-./scripts/container/down.sh --prod --remove # remove container
 ```
 
-`deploy.sh` rejects `APP_ENV=local` and loopback `DATABASE_URL` / `VALKEY_URL` to prevent accidental local config in production.
+`deploy.sh` rejects `APP_ENV=local` and loopback URLs.
 
 | Command | Action |
 |---------|--------|
-| `./scripts/container/deploy.sh` | Start app container (external URLs required) |
-| `./scripts/container/down.sh --prod` | Stop app container |
-| `./scripts/container/down.sh --prod --remove` | Remove app container |
-| `./scripts/container/logs.sh --prod` | Follow app logs |
+| `deploy.sh` | Start app (external URLs) |
+| `down.sh --prod` | Stop |
+| `down.sh --prod --remove` | Remove |
+| `logs.sh --prod` | Logs |
 
-`deploy.sh` preflight checks are listed above; see [Security notes](#security-notes-local-and-deployed) for the full production checklist.
-
-### Alternative: standalone container (no Compose)
-
-For orchestrators that inject env vars directly (Kubernetes, systemd, etc.):
+### Standalone container
 
 ```bash
-podman run -d --name todos-api \
-  -p 8000:8000 \
+podman run -d --name todos-api -p 8000:8000 \
   -e APP_ENV=production \
   -e JWT_SECRET_KEY="$JWT_SECRET_KEY" \
-  -e DATABASE_URL="$DATABASE_URL" \
+  -e POSTGRES_URL="$POSTGRES_URL" \
   -e VALKEY_URL="$VALKEY_URL" \
-  -e RUN_MIGRATIONS=true \
+  -e DEPLOY_RUN_MIGRATIONS=true \
   todos-api
 ```
 
-Health check: `GET /health` returns `{"status":"ok"}` for load balancers and container orchestrators.
+Health: `GET /health` → `{"status":"ok"}`.
 
 ### Checklist
 
-- [ ] Strong, unique `JWT_SECRET_KEY` per environment (not the template placeholder in [`production.example.py`](../src/env_config/profiles/production.example.py))
-- [ ] Managed PostgreSQL with TLS if your provider supports it in the URL
-- [ ] Managed Valkey/Redis reachable from the app (auth cache required)
-- [ ] Migrations applied (`RUN_MIGRATIONS=true` or separate migration step)
-- [ ] First admin provisioned outside the API (DB insert or signup + `role='admin'` update); further admins via `PATCH /users/{user_id}` — see [Authentication — Admin users](authentication.md#admin-users)
-- [ ] No `.env` file baked into the image — inject secrets at runtime
-- [ ] Restrict network access to the database (not public unless required)
-- [ ] Do **not** run `./scripts/database/seed.sh` in staging or production (`APP_ENV` must be `local`)
+- [ ] Unique strong `JWT_SECRET_KEY` per env
+- [ ] Managed Postgres (+ TLS if supported)
+- [ ] Managed Valkey reachable
+- [ ] Migrations applied
+- [ ] First admin outside API — [Authentication — Admin users](authentication.md#admin-users)
+- [ ] No `.env` baked in image
+- [ ] DB not public unless required
+- [ ] No `seed.sh` in staging/production
 
-## Security notes (local and deployed)
+## Security notes
 
-For internet-facing deployments, terminate **TLS** at a reverse proxy (nginx, Caddy, Traefik, or your cloud load balancer) and add **rate limiting** plus standard security headers. The app container does not provide these on its own.
+Internet-facing: TLS at reverse proxy; rate limiting + security headers — not in app container.
 
 | Risk | Mitigation |
 |------|------------|
-| Weak or shared database passwords | Env profile must set explicit `postgres_password`; Compose fails fast when missing |
-| Seeding production data | `assert_seed_allowed()` blocks `APP_ENV=staging|production` and non-local `DATABASE_URL` hosts |
-| Weak JWT at container start | `scripts/container/internal/entrypoint.sh` rejects placeholders, empty values, and keys shorter than 32 characters |
-| API exposed on all interfaces | Default `COMPOSE_APP_BIND=127.0.0.1` limits the dev API to loopback |
-| DB ports on LAN | `docker-compose.infra.yml` binds PostgreSQL and Valkey to `127.0.0.1` only |
+| Weak DB passwords | Explicit `postgres_password`; Compose fails if missing |
+| Prod seeding | `assert_seed_allowed()` blocks staging/prod + non-local hosts |
+| Weak JWT | Entrypoint rejects placeholders, empty, &lt;32 chars |
+| API on all interfaces | Default `COMPOSE_APP_BIND=127.0.0.1` |
+| DB on LAN | Infra binds `127.0.0.1` only |
 
-**Never copy local [`local.py`](../src/env_config/profiles/local.py) credentials into staging or production.** Start from [`production.example.py`](../src/env_config/profiles/production.example.py) and generate fresh secrets per environment.
+Never copy `local.toml` creds to staging/production. Start from `production.example.toml`.
 
 ## Configuration reference
 
-Environment templates:
-
 | File | Use |
 |------|-----|
-| [`profiles/example.py`](../src/env_config/profiles/example.py) | Local development template → copy to any gitignored profile name (e.g. `local.py`, `local2.py`) |
-| [`profiles/production.example.py`](../src/env_config/profiles/production.example.py) | Staging/production template → copy to gitignored `production.py` |
-| [`profiles/test.py`](../src/env_config/profiles/test.py) | CI and pytest (`ENV_PROFILE=test`) |
+| [`example.toml`](../config/profiles/example.toml) | Local template → any gitignored profile |
+| [`production.example.toml`](../config/profiles/production.example.toml) | Staging/prod template → `production.toml` |
+| [`test.toml`](../config/profiles/test.toml) | CI/pytest |
 
-All runtime config comes from env profiles loaded by `ENV_PROFILE` (any valid module name under `profiles/`). Shell scripts export vars and generate a root `.env` for Compose. See [Configuration and secrets](architecture.md#configuration-and-secrets) for profile naming rules and the full field list.
+`ENV_PROFILE` merges stacked TOML; scripts export vars + root `.env` for Compose. [Configuration and secrets](architecture.md#configuration-and-secrets).
 
-No cloud-provider-specific variables are used or required.
+No cloud-specific variables.
 
 ← [Getting started](getting-started.md)

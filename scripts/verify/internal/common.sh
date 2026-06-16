@@ -30,7 +30,7 @@ verify_require_env_profile() {
 	if [[ -z "${ENV_PROFILE:-}" ]]; then
 		echo "verify_stack: ENV_PROFILE is not set." >&2
 		echo "Export a local dev profile (APP_ENV=local), for example:" >&2
-		echo "  cp src/env_config/profiles/example.py src/env_config/profiles/local.py" >&2
+		echo "  cp config/profiles/example.toml config/profiles/local.toml" >&2
 		echo "  export ENV_PROFILE=local" >&2
 		exit 1
 	fi
@@ -40,7 +40,7 @@ verify_load_ports() {
 	verify_require_env_profile
 	# shellcheck source=scripts/internal/load_env.sh
 	source "${PROJECT_ROOT}/scripts/internal/load_env.sh"
-	env_load_stack
+	env_apply_profile
 	local app_env="${APP_ENV:?set APP_ENV in env profile}"
 	if [[ "$app_env" != "local" ]]; then
 		echo "verify_stack: active profile must have APP_ENV=local (got: ${app_env})." >&2
@@ -54,7 +54,7 @@ verify_load_ports() {
 }
 
 verify_load_local_profile() {
-	unset DATABASE_URL VALKEY_URL COMPOSE_DATABASE_URL COMPOSE_VALKEY_URL TEST_DATABASE_URL
+	unset POSTGRES_URL VALKEY_URL POSTGRES_COMPOSE_URL VALKEY_COMPOSE_URL POSTGRES_TEST_URL
 	verify_load_ports
 }
 
@@ -114,7 +114,7 @@ verify_run_seeding() {
 	# shellcheck disable=SC1091
 	source "$PROJECT_ROOT/.venv/bin/activate"
 	PYTHONPATH="${PROJECT_ROOT}/src" python -c "
-from env_config.loader import clear_env_settings_cache
+from todos_app.core.config.loader import clear_env_settings_cache
 from todos_app.infrastructure.persistence.seeding.runner import assert_seed_allowed
 clear_env_settings_cache()
 assert_seed_allowed()

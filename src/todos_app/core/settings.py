@@ -1,5 +1,7 @@
-from env_config.loader import clear_env_settings_cache, get_env_settings
-from env_config.schema import EnvSettings
+from todos_app.core.config.loader import get_env_settings
+from todos_app.core.config.schema import (
+	EnvSettings,
+)
 
 
 Settings = EnvSettings
@@ -7,6 +9,3 @@ Settings = EnvSettings
 
 def get_settings() -> EnvSettings:
 	return get_env_settings()
-
-
-__all__ = ["Settings", "clear_env_settings_cache", "get_settings"]

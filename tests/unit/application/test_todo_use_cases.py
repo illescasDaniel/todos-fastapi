@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 
 from factories import TEST_ACTOR_ID, TEST_ACTOR_ID_B, TEST_ADMIN_ID, TEST_TODO_ID, TEST_TODO_ID_B
@@ -174,21 +176,22 @@ async def test_given_regular_user_changing_owner_when_updating_todo_then_raises_
 	repo: FakeTodoRepository,
 ) -> None:
 	# given
-	merged = Todo(
-		id=TEST_TODO_ID,
-		title="Mine",
-		description=None,
-		priority="low",
-		completed=False,
-		owner_id=UNKNOWN_ID,
-	)
+	def merge(_existing: Todo, owner_id: UUID) -> Todo:
+		return Todo(
+			id=TEST_TODO_ID,
+			title="Mine",
+			description=None,
+			priority="low",
+			completed=False,
+			owner_id=owner_id,
+		)
 
 	# when
 	with pytest.raises(TodoOwnerChangeForbiddenError):
 		await todo_use_cases.update_todo_for_actor(
 			repo,
 			TEST_TODO_ID,
-			merged,
+			merge,
 			actor_id=TEST_ACTOR_ID,
 			actor_role="user",
 			requested_owner_id=UNKNOWN_ID,
@@ -219,24 +222,24 @@ async def test_given_missing_existing_todo_when_updating_then_refetches_and_pers
 	repo: FakeTodoRepository,
 ) -> None:
 	# given
-	merged = Todo(
-		id=TEST_TODO_ID,
-		title="Updated",
-		description=None,
-		priority="low",
-		completed=True,
-		owner_id=TEST_ACTOR_ID,
-	)
+	def merge(_existing: Todo, owner_id: UUID) -> Todo:
+		return Todo(
+			id=TEST_TODO_ID,
+			title="Updated",
+			description=None,
+			priority="low",
+			completed=True,
+			owner_id=owner_id,
+		)
 
 	# when
 	updated = await todo_use_cases.update_todo_for_actor(
 		repo,
 		TEST_TODO_ID,
-		merged,
+		merge,
 		actor_id=TEST_ACTOR_ID,
 		actor_role="user",
 		requested_owner_id=None,
-		existing_todo=None,
 	)
 
 	# then
@@ -248,20 +251,21 @@ async def test_given_admin_changing_owner_when_updating_todo_then_persists_new_o
 	repo: FakeTodoRepository,
 ) -> None:
 	# given
-	merged = Todo(
-		id=TEST_TODO_ID,
-		title="Mine",
-		description=None,
-		priority="low",
-		completed=False,
-		owner_id=TEST_ACTOR_ID_B,
-	)
+	def merge(_existing: Todo, owner_id: UUID) -> Todo:
+		return Todo(
+			id=TEST_TODO_ID,
+			title="Mine",
+			description=None,
+			priority="low",
+			completed=False,
+			owner_id=owner_id,
+		)
 
 	# when
 	updated = await todo_use_cases.update_todo_for_actor(
 		repo,
 		TEST_TODO_ID,
-		merged,
+		merge,
 		actor_id=TEST_ADMIN_ID,
 		actor_role=ADMIN_ROLE,
 		requested_owner_id=TEST_ACTOR_ID_B,
@@ -275,21 +279,22 @@ async def test_given_unknown_todo_id_when_updating_then_raises_not_found(
 	repo: FakeTodoRepository,
 ) -> None:
 	# given
-	merged = Todo(
-		id=UNKNOWN_ID,
-		title="Missing",
-		description=None,
-		priority="low",
-		completed=False,
-		owner_id=TEST_ACTOR_ID,
-	)
+	def merge(_existing: Todo, owner_id: UUID) -> Todo:
+		return Todo(
+			id=UNKNOWN_ID,
+			title="Missing",
+			description=None,
+			priority="low",
+			completed=False,
+			owner_id=owner_id,
+		)
 
 	# when
 	with pytest.raises(TodoNotFoundError):
 		await todo_use_cases.update_todo_for_actor(
 			repo,
 			UNKNOWN_ID,
-			merged,
+			merge,
 			actor_id=TEST_ACTOR_ID,
 			actor_role="user",
 			requested_owner_id=None,

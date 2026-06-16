@@ -6,6 +6,7 @@ from env_helpers import make_env_settings
 pytestmark = pytest.mark.unit
 
 _VALID_SECRET = "test-secret-key-for-pytest-suite-32bytes!"
+_HMAC_TEST_SECRET = "pytest-jwt-hmac-secret-key-sixty-four-bytes-minimum-length-ok!!!"
 
 _PROD_DB_URL = "postgresql+asyncpg://todos:securepassword@prod.example.com:5432/todos"
 
@@ -91,15 +92,13 @@ def test_given_explicit_urls_when_building_settings_then_keeps_profile_values() 
 @pytest.mark.parametrize(
 	"secret_key",
 	[
+		"",
 		"short",
-		"change-me-generate-a-secure-random-value",
-		"your-secret-key-is-not-long-enough-here",
 		"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-		"local-dev-migrate-placeholder-secret",
-		"container-migrate-placeholder-secret",
+		"changeme",
 	],
 )
-def test_given_weak_jwt_secret_when_creating_settings_then_raises_value_error(secret_key: str) -> None:
+def test_given_invalid_jwt_secret_when_creating_settings_then_raises_value_error(secret_key: str) -> None:
 	# given
 
 	# when
@@ -109,12 +108,33 @@ def test_given_weak_jwt_secret_when_creating_settings_then_raises_value_error(se
 	# then
 
 
-def test_given_non_hs256_algorithm_when_creating_settings_then_raises_value_error() -> None:
+@pytest.mark.parametrize("algorithm", ["HS256", "HS384", "HS512"])
+def test_given_hmac_algorithm_when_creating_settings_then_accepts_value(algorithm: str) -> None:
+	# given
+
+	# when
+	settings = make_env_settings(jwt_secret_key=_HMAC_TEST_SECRET, jwt_algorithm=algorithm)
+
+	# then
+	assert settings.jwt.algorithm == algorithm
+
+
+def test_given_non_hmac_algorithm_when_creating_settings_then_raises_value_error() -> None:
 	# given
 
 	# when
 	with pytest.raises(ValueError):
-		make_env_settings(jwt_algorithm="HS512")  # pyright: ignore[reportArgumentType]
+		make_env_settings(jwt_algorithm="RS256")  # pyright: ignore[reportArgumentType]
+
+	# then
+
+
+def test_given_hs512_algorithm_with_short_secret_when_creating_settings_then_raises_value_error() -> None:
+	# given
+
+	# when
+	with pytest.raises(ValueError, match="JWT_SECRET_KEY"):
+		make_env_settings(jwt_secret_key=_VALID_SECRET, jwt_algorithm="HS512")
 
 	# then
 
@@ -123,7 +143,7 @@ def test_given_production_loopback_database_url_when_creating_settings_then_rais
 	# given
 
 	# when
-	with pytest.raises(ValueError, match="DATABASE_URL"):
+	with pytest.raises(ValueError, match="POSTGRES_URL"):
 		make_env_settings(
 			app_env="production",
 			database_url="postgresql+asyncpg://todos:x@127.0.0.1:5432/todos",

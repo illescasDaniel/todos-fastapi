@@ -31,11 +31,11 @@ class Settings:
 def _validate_api_base_url(url: str, *, allow_remote: bool) -> str:
 	parsed = urlparse(url)
 	if parsed.scheme not in ("http", "https"):
-		raise ValueError(f"TODOS_API_BASE_URL must use http or https scheme, got: {parsed.scheme!r}")
+		raise ValueError(f"MCP_API_BASE_URL must use http or https scheme, got: {parsed.scheme!r}")
 	host = parsed.hostname or ""
 	if host not in _LOOPBACK_HOSTS and not allow_remote:
 		raise ValueError(
-			f"TODOS_API_BASE_URL host {host!r} is not a loopback address. "
+			f"MCP_API_BASE_URL host {host!r} is not a loopback address. "
 			"Set mcp_allow_remote_api=true in the env profile to allow remote API targets."
 		)
 	return url
@@ -56,7 +56,7 @@ def load_settings() -> Settings:
 	repo_root = Path(repo_root_raw).resolve()
 	_ensure_src_importable(repo_root)
 
-	from env_config.loader import get_env_settings
+	from todos_app.core.config.loader import get_env_settings
 
 	app_settings = get_env_settings()
 	api_base_url = _validate_api_base_url(

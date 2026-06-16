@@ -9,4 +9,4 @@ class Todo:
 	description: str | None
 	priority: str | None
 	completed: bool
-	owner_id: UUID
+	owner_id: UUID | None

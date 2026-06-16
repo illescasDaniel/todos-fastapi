@@ -1,49 +1,47 @@
 # Database
 
-**On this page:** [PostgreSQL](#postgresql) · [Database migrations (Alembic)](#database-migrations-alembic) · [Seeding](#seeding) · [Wiping the database](#wiping-the-database)
+**On this page:** [PostgreSQL](#postgresql) · [Migrations](#database-migrations-alembic) · [Seeding](#seeding) · [Wipe](#wiping-the-database)
 
-For first-time setup (venv, env profile, migrate, seed), see [Getting started](getting-started.md).
-
-For layer boundaries and DI patterns, see [Architecture](architecture.md).
+Setup: [Getting started](getting-started.md). Layers/DI: [Architecture](architecture.md).
 
 ## PostgreSQL
 
-Persistence is **async end-to-end**: route handlers and repository ports are `async`, and SQLAlchemy uses **asyncpg** via `DATABASE_URL` (set in your env profile — see [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py)).
+Async end-to-end: async routes/repos, SQLAlchemy + **asyncpg** via **`postgres.url`** (`POSTGRES_URL`).
 
-| Setting | Example / notes |
-|---------|-----------------|
-| **`DATABASE_URL`** | Required — e.g. `postgresql+asyncpg://todos:PASSWORD@127.0.0.1:5432/todos` in `profiles/local.py` |
-| **Local storage** | [`docker-compose.infra.yml`](../docker-compose.infra.yml) — PostgreSQL 16 on `COMPOSE_INFRA_BIND:POSTGRES_PORT` (from env profile) |
-| **Full-stack overlay** | App container uses `@postgres:5432` (rewritten from host profile URLs) |
+| Setting | Notes |
+|---------|-------|
+| **`postgres.url`** | Required — e.g. `postgresql+asyncpg://todos:PASSWORD@127.0.0.1:5432/todos` in `local.toml` |
+| **Local storage** | [`docker-compose.infra.yml`](../docker-compose.infra.yml) — Postgres 16 on `COMPOSE_INFRA_BIND:POSTGRES_PORT` |
+| **Path B** | App container uses `@postgres:5432` (host URLs rewritten) |
 
-Set `postgres_password`, `postgres_user`, `postgres_db`, and `database_url` in [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py) before starting database containers — Compose and scripts fail fast when required vars are missing. These values are for **local development only**; generate fresh credentials per staging or production environment (see [Deployment](deployment.md#local-podman-compose)).
+Set `postgres.password`, `user`, `db`, `url` in [`local.toml`](../config/profiles/local.toml) before containers — scripts fail fast if missing. Local creds only; generate fresh per staging/production ([Deployment](deployment.md#local-podman-compose)).
 
-- **Configuration:** env profile (`ENV_PROFILE=local`) supplies `DATABASE_URL` and PostgreSQL credentials
-- **Sessions:** `AsyncSession` from `async_sessionmaker`, yielded per request via FastAPI `Depends(get_db)`
-- **Repositories:** SQLAlchemy adapters — no dialect-specific code in domain ports
+- **Config:** `ENV_PROFILE=local` → `POSTGRES_URL`
+- **Sessions:** `AsyncSession` per request via `Depends(get_db)`
+- **Repos:** SQLAlchemy adapters — no dialect code in domain ports
 
-**Local setup:** [rootless Podman](../docs/deployment.md#install-podman) (`./scripts/install_podman.sh`), configure [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py), then `./scripts/database/migrate.sh` and optionally `./scripts/database/seed.sh`. Migrate and seed run inside the app container; the same commands work for host-app and full-stack workflows.
+**Local:** rootless Podman ([`install_podman.sh`](../scripts/install_podman.sh)), `local.toml`, `./scripts/database/migrate.sh`, optional `seed.sh`. Migrate/seed run in app container; same commands for host-app and full-stack.
 
 ## Database migrations (Alembic)
 
-Schema changes are managed with [Alembic](https://alembic.sqlalchemy.org/). Migration scripts live under `alembic/versions/`; `alembic/env.py` reads `DATABASE_URL` from the same settings as the app and runs migrations with the async SQLAlchemy driver (`asyncpg`).
+Revisions in `alembic/versions/`; `alembic/env.py` reads `postgres.url`, runs async (`asyncpg`).
 
 | Command | Action |
 |---------|--------|
-| `./scripts/database/migrate.sh` | Ensure Valkey + PostgreSQL infra, then apply pending revisions via the app container (`alembic upgrade head`) |
-| `./scripts/database/migrate.sh revision -m "describe change"` | Autogenerate a revision on the host `.venv` (writes to `alembic/versions/`) |
-| `./scripts/database/migrate.sh current` | Show the applied revision |
-| `./scripts/database/migrate.sh history` | List revision history |
+| `./scripts/database/migrate.sh` | Ensure infra, `alembic upgrade head` in app container |
+| `./scripts/database/migrate.sh revision -m "…"` | Autogenerate on host `.venv` |
+| `./scripts/database/migrate.sh current` | Applied revision |
+| `./scripts/database/migrate.sh history` | Revision list |
 
-**Typical schema change loop:**
+**Schema change loop:**
 
-1. Edit ORM models under `src/todos_app/infrastructure/persistence/<feature>/orm.py`.
-2. `./scripts/database/migrate.sh revision -m "describe change"`
-3. Review the generated file in `alembic/versions/` (always inspect autogenerate output).
+1. Edit `src/todos_app/infrastructure/persistence/<feature>/orm.py`
+2. `./scripts/database/migrate.sh revision -m "…"`
+3. Review `alembic/versions/` (always inspect autogenerate)
 4. `./scripts/database/migrate.sh`
 5. `./scripts/quality/tests.sh`
 
-Equivalent raw commands (with `.venv` active and `PYTHONPATH=src`):
+Raw (`.venv` + `PYTHONPATH=src`):
 
 ```bash
 alembic revision --autogenerate -m "describe change"
@@ -51,43 +49,35 @@ alembic upgrade head
 alembic current
 ```
 
-Automated tests bootstrap schema via Alembic `upgrade head` against a PostgreSQL test database (`ENV_PROFILE=test`, `test_database_url` in [`src/env_config/profiles/test.py`](../src/env_config/profiles/test.py); loaded in [`tests/conftest.py`](../tests/conftest.py)).
+Tests: `upgrade head` on PostgreSQL test DB (`ENV_PROFILE=test`, `postgres.test_url` in [`test.toml`](../config/profiles/test.toml), [`conftest.py`](../tests/conftest.py)).
 
 ## Seeding
 
-The project includes a SQL seed file and a manual script so defaults are applied only when you run it.
-The command resets the configured database (PostgreSQL tables), then inserts the default records.
+Resets DB, migrates, inserts bundled SQL.
 
-1. Configure [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py) and `export ENV_PROFILE=local` (Podman required for bundled PostgreSQL).
-2. Run:
+1. `local.toml` + `export ENV_PROFILE=local` (Podman for bundled Postgres)
+2. `./scripts/database/seed.sh`
 
-```bash
-./scripts/database/seed.sh
-```
+Order: `default_users.sql`, `default_todos.sql` under `src/todos_app/infrastructure/persistence/seeding/`.
 
-This runs inside the app container: resets the configured database, applies Alembic migrations (`upgrade head`), then inserts bundled SQL in order: `default_users.sql`, then `default_todos.sql` (under `src/todos_app/infrastructure/persistence/seeding/`).
+Use seed for demo data; [wipe](#wiping-the-database) for empty DB.
 
-Use `./scripts/database/seed.sh` when you want demo users and todos back immediately. To wipe schema and data without re-seeding, use [Wiping the database](#wiping-the-database) instead.
-
-**Safety:** seeding is refused when `APP_ENV` is `staging` or `production`, or when `DATABASE_URL` points at a non-local host. See [Deployment — Security notes](deployment.md#security-notes-local-and-deployed).
+**Safety:** refused when `APP_ENV` is `staging`/`production` or `POSTGRES_URL` is non-local. [Deployment — Security notes](deployment.md#security-notes-local-and-deployed).
 
 ## Wiping the database
 
-To remove all Compose containers and named volumes (full local reset):
-
 ```bash
-./scripts/database/wipe.sh
+./scripts/database/wipe.sh          # compose down -v
+./scripts/database/wipe.sh --yes    # non-interactive
 ```
 
-Pass `--yes` to skip the confirmation prompt (non-interactive).
-
-**After wiping**, recreate schema and optionally load demo data:
+Then:
 
 ```bash
-./scripts/database/migrate.sh          # required — apply migrations
-./scripts/database/seed.sh             # optional — reset + demo users/todos
+./scripts/database/migrate.sh       # required
+./scripts/database/seed.sh          # optional demo data
 ```
 
-**Wipe vs seed:** `./scripts/database/wipe.sh` removes containers and volumes (`compose down -v`). `./scripts/database/seed.sh` resets the database, re-applies migrations, and inserts bundled SQL demo data — use seed when you want a fresh DB ready to log in with sample users.
+**Wipe** removes containers/volumes. **Seed** resets DB + migrations + demo SQL.
 
 ← [Project README](../README.md)

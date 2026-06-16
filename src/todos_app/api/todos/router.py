@@ -9,7 +9,6 @@ from todos_app.application import todos as todo_use_cases
 from todos_app.core.auth import CurrentUserDep
 from todos_app.core.dependencies import TodoRepositoryDep
 from todos_app.core.settings import get_settings
-from todos_app.domain.auth.authorization import resolve_update_owner_id
 
 
 settings = get_settings()
@@ -82,7 +81,7 @@ async def create_todo(
 ) -> TodoResponse:
 	created_todo = await todo_use_cases.create_todo_for_actor(
 		repo,
-		mappers.create_to_entity(todo, current_user.user_id),
+		mappers.create_to_entity(todo),
 		actor_id=current_user.user_id,
 		actor_role=current_user.role,
 		requested_owner_id=todo.owner_id,
@@ -104,25 +103,13 @@ async def update_todo(
 	repo: TodoRepositoryDep,
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
-	existing_todo = await todo_use_cases.get_todo_for_actor(
-		repo,
-		todo_id,
-		actor_id=current_user.user_id,
-		actor_role=current_user.role,
-	)
-	owner_id = resolve_update_owner_id(
-		existing_owner_id=existing_todo.owner_id,
-		requested_owner_id=todo.owner_id,
-	)
-	entity = mappers.update_to_entity(todo, todo_id, owner_id)
 	updated_todo = await todo_use_cases.update_todo_for_actor(
 		repo,
 		todo_id,
-		entity,
+		lambda _existing, owner_id: mappers.update_to_entity(todo, todo_id, owner_id),
 		actor_id=current_user.user_id,
 		actor_role=current_user.role,
 		requested_owner_id=todo.owner_id,
-		existing_todo=existing_todo,
 	)
 	return mappers.to_response(updated_todo)
 
@@ -141,27 +128,14 @@ async def patch_todo(
 	repo: TodoRepositoryDep,
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
-	existing_todo = await todo_use_cases.get_todo_for_actor(
-		repo,
-		todo_id,
-		actor_id=current_user.user_id,
-		actor_role=current_user.role,
-	)
 	fields = mappers.patch_fields(todo)
-	requested_owner_id = fields.get("owner_id")
-	owner_id = resolve_update_owner_id(
-		existing_owner_id=existing_todo.owner_id,
-		requested_owner_id=requested_owner_id,
-	)
-	entity = mappers.apply_todo_patch(existing_todo, fields, owner_id)
 	updated_todo = await todo_use_cases.update_todo_for_actor(
 		repo,
 		todo_id,
-		entity,
+		lambda existing, owner_id: mappers.apply_todo_patch(existing, fields, owner_id),
 		actor_id=current_user.user_id,
 		actor_role=current_user.role,
-		requested_owner_id=requested_owner_id,
-		existing_todo=existing_todo,
+		requested_owner_id=fields.get("owner_id"),
 	)
 	return mappers.to_response(updated_todo)
 

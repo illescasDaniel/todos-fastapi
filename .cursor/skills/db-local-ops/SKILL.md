@@ -12,7 +12,7 @@ Use this skill when the user wants to reset local dev data, re-seed demo records
 
 ## Workflow
 
-1. Confirm `ENV_PROFILE=local` and [`src/env_config/profiles/local.py`](../../../src/env_config/profiles/local.py) target the intended **local** database.
+1. Confirm `ENV_PROFILE=local` and [`config/profiles/local.toml`](../../../config/profiles/local.toml) target the intended **local** database.
 2. Wipe (full volume reset):
    - `./.cursor/skills/db-local-ops/scripts/run.sh wipe`
    - Re-apply schema with `alembic-migrate`; optionally seed afterward.

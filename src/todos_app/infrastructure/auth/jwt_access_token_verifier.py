@@ -16,7 +16,7 @@ class JwtAccessTokenVerifier:
 			payload = decode(
 				jwt=token,
 				key=self._settings.jwt.secret_key,
-				algorithms=["HS256"],
+				algorithms=[self._settings.jwt.algorithm],
 				audience=self._settings.jwt.audience,
 				issuer=self._settings.jwt.issuer,
 			)

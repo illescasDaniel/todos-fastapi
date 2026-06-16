@@ -46,6 +46,8 @@ class FakeTodoRepository:
 
 	async def add(self, todo: Todo) -> Todo:
 		new_todo_id = new_id()
+		if todo.owner_id is None:
+			raise ValueError("todo owner_id must be set before persist")
 		stored = Todo(
 			id=new_todo_id,
 			title=todo.title,

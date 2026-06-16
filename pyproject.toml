@@ -39,7 +39,7 @@ Homepage = "https://github.com/illescasDaniel/todos-fastapi"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["todos_app*", "env_config*"]
+include = ["todos_app*"]
 
 # --- RUFF (Linter & Import Sorter) ---
 [tool.ruff]
@@ -59,7 +59,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["todos_app", "env_config"]
+source = ["todos_app"]
 omit = ["*/infrastructure/persistence/seeding/*", "alembic/env.py"]
 
 [tool.coverage.report]
@@ -104,8 +104,8 @@ lines-after-imports = 2
 "src/todos_app/main.py" = ["S101", "S104", "E501"]
 # Pre-existing long function signature; cannot be broken up without changing the API
 "src/todos_app/api/users/router.py" = ["E501"]
-# Profile modules intentionally contain placeholder secrets (example/test templates)
-"src/env_config/profiles/**" = ["S105", "S106"]
+# Profile TOML intentionally contains placeholder secrets (example/test templates)
+"config/profiles/**" = ["S105", "S106"]
 
 # --- Type checking (Cursor Pyright / basedpyright) ---
 [tool.basedpyright]

@@ -18,7 +18,7 @@ def require_async_db_driver(database_url: str) -> None:
 		raise RuntimeError(
 			f"Unsupported database driver {driver!r}. "
 			"This project requires PostgreSQL with asyncpg "
-			"(DATABASE_URL=postgresql+asyncpg://...)."
+			"(POSTGRES_URL=postgresql+asyncpg://...)."
 		)
 	try:
 		importlib.import_module("asyncpg")
@@ -57,7 +57,7 @@ def assert_database_url_is_local_only(database_url: str) -> None:
 	url = make_url(database_url)
 	host = url.host or "(no host)"
 	raise RuntimeError(
-		"Refusing to wipe: DATABASE_URL must point to a local development database only.\n"
+		"Refusing to wipe: POSTGRES_URL must point to a local development database only.\n"
 		"  PostgreSQL: host must be 127.0.0.1, localhost, or ::1\n"
 		f"  Configured URL host: {host}"
 	)
@@ -66,7 +66,7 @@ def assert_database_url_is_local_only(database_url: str) -> None:
 def create_engine_for_url(database_url: str) -> AsyncEngine:
 	require_async_db_driver(database_url)
 	if not database_url_is_postgresql(database_url):
-		raise RuntimeError("DATABASE_URL must use postgresql+asyncpg://...")
+		raise RuntimeError("POSTGRES_URL must use postgresql+asyncpg://...")
 	return create_async_engine(database_url)
 
 

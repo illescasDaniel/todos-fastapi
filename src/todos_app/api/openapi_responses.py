@@ -13,14 +13,10 @@ from todos_app.core.http_errors import (
 	FORBIDDEN,
 	INVALID_CREDENTIALS,
 	INVALID_TOKEN,
-	TODO_NOT_FOUND,
 	TODO_NOT_FOUND_FOR_ACTOR,
 	TODO_OWNER_CHANGE_FORBIDDEN,
 	USER_NOT_FOUND,
 )
-
-
-__all__ = ["OpenAPIResponse"]
 
 
 class OpenAPIResponses(dict[int | str, dict[str, Any]]):
@@ -44,11 +40,6 @@ def _json_error_response(
 
 
 class OpenAPIResponse(Enum):
-	TODO_NOT_FOUND = (
-		status.HTTP_404_NOT_FOUND,
-		"Todo not found",
-		TODO_NOT_FOUND,
-	)
 	TODO_NOT_IN_ACTOR_SCOPE = (
 		status.HTTP_404_NOT_FOUND,
 		"Todo not in caller scope (missing or not owned; admins see global not found)",

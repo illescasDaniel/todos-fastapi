@@ -18,7 +18,7 @@ Start the full Podman Compose stack (Valkey + PostgreSQL + app).
 
 Uses docker-compose.infra.yml + docker-compose.app.base.yml + docker-compose.app.with-infra.yml.
 Uses compose start when stopped containers exist; otherwise up -d --build.
-Migrations run on container start when RUN_MIGRATIONS=true in the env profile.
+Migrations run on container start when DEPLOY_RUN_MIGRATIONS=true in the env profile.
 
 Requires rootless Podman (see docs/deployment.md#install-podman).
 EOF
@@ -39,7 +39,6 @@ case "${1:-}" in
 esac
 
 container_load_compose_context local
-note_compose_host_override
 
 DATABASE_SCRIPTS_DIR="$PROJECT_ROOT/scripts/database/internal"
 # shellcheck source=scripts/database/internal/ensure.sh

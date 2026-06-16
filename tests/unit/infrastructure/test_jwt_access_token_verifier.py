@@ -10,9 +10,31 @@ from todos_app.infrastructure.auth.jwt_access_token_verifier import JwtAccessTok
 
 pytestmark = pytest.mark.unit
 
+_HMAC_TEST_SECRET = "pytest-jwt-hmac-secret-key-sixty-four-bytes-minimum-length-ok!!!"
 _SETTINGS = make_env_settings(jwt_secret_key="test-secret-key-for-pytest-suite-32bytes!")
 _ISSUER = JwtAccessTokenIssuer(_SETTINGS)
 _VERIFIER = JwtAccessTokenVerifier(_SETTINGS)
+
+
+@pytest.mark.parametrize("algorithm", ["HS256", "HS384", "HS512"])
+def test_given_hmac_algorithm_config_when_decoding_issued_token_then_returns_authenticated_user(
+	algorithm: str,
+) -> None:
+	# given
+	settings = make_env_settings(jwt_secret_key=_HMAC_TEST_SECRET, jwt_algorithm=algorithm)
+	issuer = JwtAccessTokenIssuer(settings)
+	verifier = JwtAccessTokenVerifier(settings)
+	token = issuer.issue(user_id=TEST_USER_ID, username="jane", role="user", token_version=0)
+
+	# when
+	user = verifier.decode(token)
+
+	# then
+	assert user is not None
+	assert user.user_id == TEST_USER_ID
+	assert user.username == "jane"
+	assert user.role == "user"
+	assert user.token_version == 0
 
 
 def test_given_valid_access_token_when_decoding_then_returns_authenticated_user() -> None:

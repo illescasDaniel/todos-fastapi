@@ -32,7 +32,7 @@ revision)
 
 	database_load_env
 	database_ensure_ready
-	export DATABASE_URL
+	export POSTGRES_URL
 	database_clear_settings_cache
 
 	if [[ ! -d ".venv" ]]; then
@@ -43,7 +43,7 @@ revision)
 	source ".venv/bin/activate"
 	export PYTHONPATH="src"
 	if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
-		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_load_stack)." >&2
+		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_apply_profile)." >&2
 		exit 1
 	fi
 	alembic revision --autogenerate -m "$message"
@@ -52,10 +52,9 @@ upgrade | current | history)
 	# shellcheck source=scripts/database/internal/container_ops.sh
 	source "$SCRIPT_DIR/internal/container_ops.sh"
 	container_ops_init
-	note_compose_host_override
 	container_ops_ensure_infra
 	if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
-		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_load_stack)." >&2
+		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_apply_profile)." >&2
 		exit 1
 	fi
 	case "$cmd" in

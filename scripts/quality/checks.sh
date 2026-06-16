@@ -220,7 +220,8 @@ fi
 # --- 7. verify_stack (optional) ---
 if [[ "${FULL}" == true ]]; then
 	gate_step_start "verify_stack"
-	verify_output="$("${scripts_dir}/verify/verify_stack.sh" --skip-coverage 2>&1)"
+	verify_profile="${ENV_PROFILE:-local}"
+	verify_output="$(ENV_PROFILE="${verify_profile}" "${scripts_dir}/verify/verify_stack.sh" --skip-coverage 2>&1)"
 	verify_exit=$?
 	printf '%s\n' "${verify_output}"
 	if [[ "${verify_exit}" -eq 0 ]]; then

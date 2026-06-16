@@ -21,7 +21,7 @@ if database_uses_container; then
 fi
 
 database_ensure_ready
-export DATABASE_URL VALKEY_URL
+export POSTGRES_URL VALKEY_URL
 database_clear_settings_cache
 
 # shellcheck disable=SC1091

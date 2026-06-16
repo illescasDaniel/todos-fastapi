@@ -64,3 +64,19 @@ def test_given_minimal_todo_entity_when_round_tripping_through_orm_then_preserve
 
 	# then
 	assert round_tripped == entity
+
+
+def test_given_todo_without_owner_when_mapping_to_orm_then_raises() -> None:
+	# given
+	entity = Todo(
+		id=TEST_TODO_ID,
+		title="Draft",
+		description=None,
+		priority=None,
+		completed=False,
+		owner_id=None,
+	)
+
+	# when / then
+	with pytest.raises(ValueError, match="owner_id must be set"):
+		mapper.to_orm(entity, id=TEST_TODO_ID)

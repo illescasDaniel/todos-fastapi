@@ -9,14 +9,14 @@ def to_response(todo: Todo) -> TodoResponse:
 	return TodoResponse.model_validate(todo)
 
 
-def create_to_entity(todo: TodoCreate, owner_id: UUID) -> Todo:
+def create_to_entity(todo: TodoCreate) -> Todo:
 	return Todo(
 		id=None,
 		title=todo.title,
 		description=todo.description,
 		priority=todo.priority,
 		completed=todo.completed,
-		owner_id=owner_id,
+		owner_id=None,
 	)
 
 

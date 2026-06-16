@@ -1,11 +1,11 @@
 from argon2 import PasswordHasher as Argon2Hasher
 from argon2.exceptions import VerifyMismatchError
 
-from env_config.schema import EnvSettings
+from todos_app.core.settings import Settings
 
 
 class Argon2PasswordHasher:
-	def __init__(self, settings: EnvSettings) -> None:
+	def __init__(self, settings: Settings) -> None:
 		self._hasher = Argon2Hasher(
 			time_cost=settings.argon2.time_cost,
 			memory_cost=settings.argon2.memory_cost,

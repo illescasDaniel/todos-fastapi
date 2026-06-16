@@ -1,6 +1,6 @@
 # App service — production (Path C) and local full-stack base (Path B).
 # Path B: ./scripts/container/up.sh merges docker-compose.infra.yml + docker-compose.app.with-infra.yml
-# Path C: ./scripts/container/deploy.sh uses this file only (external DATABASE_URL / VALKEY_URL)
+# Path C: ./scripts/container/deploy.sh uses this file only (external POSTGRES_URL / VALKEY_URL)
 services:
   app:
     build:
@@ -15,9 +15,7 @@ services:
       # whole .env file. This file is used for local and single-host deployments only.
       - .env
     environment:
-      DATABASE_URL: ${COMPOSE_DATABASE_URL}
-      VALKEY_URL: ${COMPOSE_VALKEY_URL}
-      RUN_MIGRATIONS: ${RUN_MIGRATIONS:?set RUN_MIGRATIONS in env profile}
+      DEPLOY_RUN_MIGRATIONS: ${DEPLOY_RUN_MIGRATIONS:?set DEPLOY_RUN_MIGRATIONS in env profile}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

@@ -1,31 +1,26 @@
 # Development
 
-## Code quality and linting (Ruff)
+## Ruff
 
-This project uses [Ruff](https://github.com/astral-sh/ruff) for lightning-fast Python linting, import sorting, and formatting.
+[Ruff](https://github.com/astral-sh/ruff) for lint, imports, format. `.venv` + dev deps:
 
-With your virtual environment active and development dependencies installed, you can run:
+```bash
+./scripts/quality/ruff.sh
+```
 
-- **Check code for linting/style issues:**
-  ```bash
-  ./scripts/quality/ruff.sh
-  ```
+## basedpyright
 
-## Type checking (basedpyright)
-
-[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). Included packages: `todos_app`, `env_config`, tests, MCP. Included in the quality gate (`./scripts/quality/checks.sh`). Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
-
-From the repo root with `.venv` active:
+**Strict** on `src/`, `tests/`, `mcp/todos-backend/` (`pyproject.toml` → `[tool.basedpyright]`). In quality gate. Fix types in `src/todos_app/`; tests/MCP may use `# pyright: ignore`.
 
 ```bash
 ./scripts/quality/pyright.sh
 ```
 
-The script auto-installs `mcp/todos-backend/` editable when `todos_mcp` is not importable. For MCP-only development with `mcp/todos-backend/.venv`, run `basedpyright` from that directory (see `mcp/todos-backend/pyproject.toml` → `[tool.basedpyright]`).
+Auto-installs MCP editable when `todos_mcp` missing. MCP-only: run from `mcp/todos-backend/` with that `.venv`.
 
-### Type-only imports and lazy driver loading
+### Type-only imports and lazy drivers
 
-Infrastructure adapters sometimes need a **third-party type in annotations** without importing that package at module load time. Use the standard `TYPE_CHECKING` pattern:
+Third-party types in annotations without runtime import — `TYPE_CHECKING`:
 
 ```python
 from typing import TYPE_CHECKING
@@ -39,38 +34,34 @@ class ValkeyUserAuthCache:
         self._client = client
 ```
 
-- **`TYPE_CHECKING`** is `False` at runtime and `True` when basedpyright analyzes the file, so the import runs only for the type checker.
-- **Python 3.14+** (this project’s minimum) defers annotation evaluation ([PEP 649](https://peps.python.org/pep-0649/)), so `Valkey` does not need to exist at runtime when the class body runs.
+- `TYPE_CHECKING` false at runtime, true for pyright
+- Python 3.14+ defers annotations (PEP 649) — no runtime `Valkey` needed in class body
 
-When code must **construct** or **call** a third-party client, import it at the use site (or via `importlib.import_module`) after an explicit guard:
+Construct/call third-party clients after guard:
 
 | Module | Guard | Runtime import |
 |--------|-------|----------------|
-| [`valkey_client.py`](../src/todos_app/infrastructure/cache/valkey_client.py) | `require_valkey_driver()` | `from valkey.asyncio import Valkey` inside `create_valkey_client` |
-| [`database.py`](../src/todos_app/infrastructure/persistence/database.py) | `require_async_db_driver(url)` | `importlib.import_module("asyncpg")` when the URL needs it |
+| [`valkey_client.py`](../src/todos_app/infrastructure/cache/valkey_client.py) | `require_valkey_driver()` | `from valkey.asyncio import Valkey` in `create_valkey_client` |
+| [`database.py`](../src/todos_app/infrastructure/persistence/database.py) | `require_async_db_driver(url)` | `importlib.import_module("asyncpg")` |
 
-`valkey_user_auth_cache.py` only receives an already-built client, so it uses **`TYPE_CHECKING` only** — no runtime `valkey` import in that module.
+`valkey_user_auth_cache.py`: `TYPE_CHECKING` only — receives built client.
 
-Use this split for new infrastructure adapters: **factory / guard module** owns lazy loading; **adapter modules** type against the client with `TYPE_CHECKING` when they do not import the driver themselves.
+Pattern: **factory/guard** lazy-loads; **adapter** types client via `TYPE_CHECKING`.
 
-## Combined quality gate
-
-After substantive changes, run the full local check sequence. All steps run even when one fails; a summary report prints at the end. Exit 1 only when errors exist (warnings-only passes):
+## Quality gate
 
 ```bash
 ./scripts/quality/checks.sh
 ```
 
-Steps (see `scripts/quality/checks.sh`): dependency audit → Ruff → basedpyright → MCP tests → pytest with coverage. Default: Ruff check-only. Use `--fix` for Ruff autofix before the gate; `--full` adds stack verification (implies `--fix`, local only).
-
-For deployment-path smoke (Compose, bare-metal, HTTP checks — slow):
+All steps run; summary at end; exit 1 on errors. Steps: audit → Ruff → pyright → MCP tests → pytest+coverage. `--fix` for Ruff autofix; `--full` adds stack verify (local, implies `--fix`).
 
 ```bash
-./scripts/quality/checks.sh --fix   # Ruff autofix, then gate
-./scripts/quality/checks.sh --full  # --fix + verify_stack
+./scripts/quality/checks.sh --fix
+./scripts/quality/checks.sh --full
 ```
 
-Individual steps:
+Individual:
 
 ```bash
 ./scripts/quality/ruff.sh
@@ -78,16 +69,14 @@ Individual steps:
 ./scripts/quality/tests.sh --coverage
 ```
 
-MCP tests and dependency audit are gate-only (no standalone scripts); run `./scripts/quality/checks.sh`.
+MCP tests + audit: gate only (`checks.sh`).
 
-## Running tests
+## Tests
 
-Automated tests use [pytest](https://docs.pytest.org/) with [pytest-asyncio](https://pytest-asyncio.readthedocs.io/). Install dev dependencies first (`pip install -e ".[dev]"`).
-
-With `.venv` active:
+[pytest](https://docs.pytest.org/) + [pytest-asyncio](https://pytest-asyncio.readthedocs.io/). `pip install -e ".[dev]"`.
 
 ```bash
-chmod +x scripts/quality/tests.sh   # once, if needed
+chmod +x scripts/quality/tests.sh   # once
 ./scripts/quality/tests.sh
 ./scripts/quality/tests.sh -m unit
 ./scripts/quality/tests.sh -m integration
@@ -95,83 +84,71 @@ chmod +x scripts/quality/tests.sh   # once, if needed
 ./scripts/quality/tests.sh --coverage -m unit
 ```
 
-Tests use a PostgreSQL test database from [`tests/conftest.py`](../tests/conftest.py) with `ENV_PROFILE=test` ([`src/env_config/profiles/test.py`](../src/env_config/profiles/test.py)); they do not use Compose volumes or a host dev database. CI sets `ENV_PROFILE=test` in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+PostgreSQL test DB via [`conftest.py`](../tests/conftest.py), `ENV_PROFILE=test` ([`test.toml`](../config/profiles/test.toml)) — no Compose volumes or host dev DB. CI: same in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
-[`scripts/quality/tests.sh`](../scripts/quality/tests.sh) recreates the infra PostgreSQL container when credentials do not match the test profile (for example after local dev with `ENV_PROFILE=local`).
+[`tests.sh`](../scripts/quality/tests.sh) recreates infra Postgres when creds mismatch test profile.
 
-**Valkey is not required for tests** — `conftest.py` overrides `UserAuthCache` with `FakeUserAuthCache` so CI stays fast without a Valkey service.
+**No Valkey in tests** — `FakeUserAuthCache` override in `conftest.py`.
 
-| Suite | Location | What it covers |
-|-------|----------|----------------|
-| **Unit** | `tests/unit/domain/` | Authorization helpers (`list_owner_filter`, owner resolution, `require_admin`) |
-| **Unit** | `tests/unit/application/` | Todo and user use cases with in-memory fakes (`tests/fakes/`) |
-| **Unit** | `tests/unit/api/` | Request/response mappers for todos and users |
-| **Unit** | `tests/unit/infrastructure/` | JWT access-token verifier edge cases |
-| **Integration** | `tests/integration/persistence/` | `SqlAlchemyTodoRepository` and `SqlAlchemyUserRepository` (including `owner_id` scope and cascade delete) |
-| **Integration** | `tests/integration/api/` | Auth login, todo and user HTTP routes via `httpx.AsyncClient` |
+| Suite | Location | Covers |
+|-------|----------|--------|
+| Unit | `tests/unit/domain/` | Authorization helpers |
+| Unit | `tests/unit/application/` | Use cases + `tests/fakes/` |
+| Unit | `tests/unit/api/` | Mappers |
+| Unit | `tests/unit/infrastructure/` | JWT verifier |
+| Integration | `tests/integration/persistence/` | SQLAlchemy repos (`owner_id`, cascade) |
+| Integration | `tests/integration/api/` | HTTP routes via `httpx` |
 
-Shared helpers: [`tests/factories.py`](../tests/factories.py) (JSON payloads), [`tests/integration/api/helpers.py`](../tests/integration/api/helpers.py) (`register_and_login`, `auth_headers`).
+Helpers: [`factories.py`](../tests/factories.py), [`helpers.py`](../tests/integration/api/helpers.py).
 
-See [Testing](architecture.md#testing) for the full test tree, fixtures, and conventions (including [GWT naming](architecture.md#gwt-naming)).
+Full tree: [Testing](architecture.md#testing), [GWT naming](architecture.md#gwt-naming).
 
-**Benchmark:** serial pytest timings and before/after integration optimizations — [test-benchmark.md](test-benchmark.md). Re-run with `./scripts/quality/benchmark_pytest.sh` (optional log path argument).
+Benchmark: [test-benchmark.md](test-benchmark.md). Re-run: `./scripts/quality/benchmark_pytest.sh`.
 
-### Coverage (optional)
+### Coverage
 
-Requires dev dependencies (`pytest-cov` is included in `.[dev]`). Pass `--coverage` to `run_tests.sh`:
-
-```bash
-./scripts/quality/tests.sh --coverage
-```
-
-Runs the suite with a terminal report (missed lines) and an HTML report under `htmlcov/`. Extra pytest arguments are forwarded (for example `./scripts/quality/tests.sh --coverage -m unit`).
+`--coverage` → terminal report + `htmlcov/`. 90% line coverage on `todos_app` (`pyproject.toml`).
 
 ## Stack verification
 
-[`scripts/verify/verify_stack.sh`](../scripts/verify/verify_stack.sh) exercises every local deployment path in one run (~5–15 min with image builds). This is **manual, slow stack verification** — not a quick smoke test and not part of routine development or CI.
+[`verify_stack.sh`](../scripts/verify/verify_stack.sh) — all local deploy paths (~5–15 min). Manual only; not CI; not routine dev.
 
 | Scenario | pytest | HTTP smoke |
 |----------|--------|------------|
-| `bare-metal/postgres` | — | migrate, seed, host API, smoke |
-| `compose/postgres` | — | Path B up, seed, smoke |
-| `ci/coverage` (unless `--skip-coverage`) | `./scripts/quality/tests.sh --coverage` on PostgreSQL | — |
+| `bare-metal/postgres` | — | migrate, seed, host API |
+| `compose/postgres` | — | Path B up, seed |
+| `ci/coverage` (unless `--skip-coverage`) | `tests.sh --coverage` | — |
 
-Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `POST /auth/login` (seeded `jane` / `changeme`), `GET /todos?limit=5`. The full unit + integration suite runs **once** at the end (same as CI), against the PostgreSQL test database from [`tests/conftest.py`](../tests/conftest.py).
+Per env: migrate, seed, smoke `GET /health`, `POST /auth/login` (jane/changeme), `GET /todos?limit=5`. Full suite once at end (PostgreSQL test DB).
 
-**When to run:** after changes to Compose, container scripts, Alembic, or `DATABASE_URL` wiring; before a demo or release; when you explicitly want all local deployment paths checked.
+**Run when:** Compose/container/Alembic/`POSTGRES_URL` changes; pre-demo/release; explicit full-path check.
 
-**When not to run:** routine feature work (use `./scripts/quality/tests.sh` instead).
+**Skip for:** routine features — use `tests.sh`.
 
-**Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, `api_port` free in your env profile, PostgreSQL on `127.0.0.1:${POSTGRES_PORT}`. Set `ENV_PROFILE=local` and configure [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py).
+**Needs:** `.venv` + dev deps, `curl`, rootless Podman, free `api.port`, Postgres on `127.0.0.1:${POSTGRES_PORT}`, `ENV_PROFILE=local`, [`local.toml`](../config/profiles/local.toml).
 
 ```bash
-./scripts/verify/verify_stack.sh                         # all scenarios + coverage
-./scripts/verify/verify_stack.sh --only postgres         # bare-metal PostgreSQL only
-./scripts/verify/verify_stack.sh --only compose-postgres # full-stack Compose only
-./scripts/verify/verify_stack.sh --skip-coverage         # skip final coverage gate
+./scripts/verify/verify_stack.sh
+./scripts/verify/verify_stack.sh --only postgres
+./scripts/verify/verify_stack.sh --only compose-postgres
+./scripts/verify/verify_stack.sh --skip-coverage
 ```
 
-## Dependency auditing and lockfiles
+## Dependency audit and lockfile
 
-### pip-audit
-
-Audits installed PyPI packages in the active `.venv` (editable local packages such as `fastapi-todos` and `todos-mcp` are skipped). Run via the quality gate:
+**pip-audit** — active `.venv`; skips editable locals. Via gate:
 
 ```bash
 ./scripts/quality/checks.sh
 ```
 
-Included in `[dev]` dependencies (`pip-audit`). Invoked by the quality gate (`./scripts/quality/checks.sh`).
-
-### uv lockfile (reproducible installs)
-
-If you have [`uv`](https://github.com/astral-sh/uv) installed you can generate a lockfile for reproducible installs:
+**uv lock** (optional):
 
 ```bash
-uv lock          # generate / refresh uv.lock
-uv sync --frozen # install exact pinned versions
+uv lock
+uv sync --frozen
 ```
 
-`uv.lock` is committed to the repository and should be kept up to date when dependencies change. It is **not** in `.gitignore`.
+`uv.lock` committed; update when deps change.
 
 ← [Project README](../README.md)

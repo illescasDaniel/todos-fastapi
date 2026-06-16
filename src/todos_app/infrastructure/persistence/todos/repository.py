@@ -9,6 +9,7 @@ from todos_app.domain.ids import new_id
 from todos_app.domain.todos.entity import Todo
 from todos_app.domain.todos.page import TodoPage
 from todos_app.infrastructure.persistence.todos import mapper
+from todos_app.infrastructure.persistence.todos.mapper import require_owner_id
 from todos_app.infrastructure.persistence.todos.orm import TodoModel
 
 
@@ -59,7 +60,7 @@ class SqlAlchemyTodoRepository:
 			description=todo.description,
 			priority=todo.priority,
 			completed=todo.completed,
-			owner_id=todo.owner_id,
+			owner_id=require_owner_id(todo),
 		).returning(TodoModel)
 		result = await self._db.execute(stmt)
 		row = result.scalar_one_or_none()

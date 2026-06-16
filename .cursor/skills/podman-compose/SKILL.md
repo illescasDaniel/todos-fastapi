@@ -12,7 +12,7 @@ Use this skill when the user wants **local full-stack** container development (b
 
 For **daily dev** (Path A — infra-only Compose + host app with hot reload), use `./scripts/start.sh` — see [docs/deployment.md](../../../docs/deployment.md#local-podman-compose).
 
-For **production deploy** (Path C), copy [`production.example.py`](../../../src/env_config/profiles/production.example.py) to `profiles/production.py` and set `ENV_PROFILE=production` — see [docs/deployment.md](../../../docs/deployment.md#path-c--app-only-compose-primary).
+For **production deploy** (Path C), copy [`production.example.toml`](../../../config/profiles/production.example.toml) to `config/profiles/production.toml` and set `ENV_PROFILE=production` — see [docs/deployment.md](../../../docs/deployment.md#path-c--app-only-compose-primary).
 
 ## When NOT to use
 
@@ -26,7 +26,7 @@ For bare-metal API dev (venv, `./scripts/database/migrate.sh`, `./scripts/start.
 ## Prerequisites
 
 1. **Podman** installed (rootless). On Arch/CachyOS: `./scripts/install_podman.sh` or `sudo pacman -S --needed podman podman-compose`. See [docs/deployment.md](../../../docs/deployment.md#install-podman).
-2. **`ENV_PROFILE=local`** and gitignored [`src/env_config/profiles/local.py`](../../../src/env_config/profiles/local.py) with secrets. Scripts export vars for Compose.
+2. **`ENV_PROFILE=local`** and gitignored [`config/profiles/local.toml`](../../../config/profiles/local.toml) with secrets. Scripts export vars for Compose.
 3. For **seed**: Podman and `.env` with `APP_ENV=local` (seed runs via app container).
 
 ## Compose layout (Path B)
@@ -39,7 +39,7 @@ For bare-metal API dev (venv, `./scripts/database/migrate.sh`, `./scripts/start.
 
 Full-stack scripts use: `-f docker-compose.infra.yml -f docker-compose.app.base.yml -f docker-compose.app.with-infra.yml`.
 
-## DATABASE_URL / VALKEY_URL (Path B)
+## POSTGRES_URL / VALKEY_URL (Path B)
 
 Host `.env` uses `127.0.0.1`; app overlay rewrites to `postgres` / `valkey` inside the container. Do not put compose service hostnames in `.env` for Path B.
 
@@ -70,7 +70,7 @@ Examples:
 ./.cursor/skills/podman-compose/scripts/run.sh build
 ```
 
-Migrations run on container start when `RUN_MIGRATIONS=true` (default). After `wipe`, run `./scripts/database/migrate.sh` (and optionally `./scripts/database/seed.sh` or `up`).
+Migrations run on container start when `DEPLOY_RUN_MIGRATIONS=true` (default). After `wipe`, run `./scripts/database/migrate.sh` (and optionally `./scripts/database/seed.sh` or `up`).
 
 ## Constraints
 

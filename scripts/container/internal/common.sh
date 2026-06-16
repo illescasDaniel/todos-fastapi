@@ -19,19 +19,11 @@ container_compose() {
 	podman compose "$@"
 }
 
-JWT_EXAMPLE_PLACEHOLDER="change-me-generate-a-secure-random-value"
-MIGRATE_PLACEHOLDER_SECRET="container-migrate-placeholder-secret"
 JWT_MIN_LENGTH=32
 
 jwt_secret_key_is_weak() {
 	local key="${1:-}"
-	if [[ -z "$key" ]]; then
-		return 0
-	fi
-	if [[ "$key" == "$JWT_EXAMPLE_PLACEHOLDER" ]] || [[ "$key" == "$MIGRATE_PLACEHOLDER_SECRET" ]]; then
-		return 0
-	fi
-	if [[ ${#key} -lt $JWT_MIN_LENGTH ]]; then
+	if [[ -z "$key" ]] || [[ ${#key} -lt $JWT_MIN_LENGTH ]]; then
 		return 0
 	fi
 	return 1
@@ -40,11 +32,10 @@ jwt_secret_key_is_weak() {
 load_compose_env() {
 	# shellcheck source=scripts/internal/load_env.sh
 	source "$PROJECT_ROOT/scripts/internal/load_env.sh"
-	env_load_stack
-	env_write_dotenv
+	env_apply_profile
 }
 
-database_url_uses_local_host() {
+postgres_url_uses_local_host() {
 	[[ "$1" == *@127.0.0.1:* ]]
 }
 
@@ -53,49 +44,12 @@ valkey_url_uses_local_host() {
 		|| [[ "$1" == valkey://*@127.0.0.1:* ]] || [[ "$1" == redis://*@127.0.0.1:* ]]
 }
 
-export_compose_database_url() {
-	if database_url_uses_local_host "$DATABASE_URL"; then
-		COMPOSE_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in env profile}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in env profile}"
-	else
-		COMPOSE_DATABASE_URL="$DATABASE_URL"
-	fi
-	export COMPOSE_DATABASE_URL
-}
-
-export_compose_valkey_url() {
-	if valkey_url_uses_local_host "$VALKEY_URL"; then
-		if [[ -n "${VALKEY_PASSWORD:-}" ]]; then
-			COMPOSE_VALKEY_URL="valkey://:${VALKEY_PASSWORD}@valkey:6379/0"
-		else
-			COMPOSE_VALKEY_URL="valkey://valkey:6379/0"
-		fi
-	else
-		COMPOSE_VALKEY_URL="$VALKEY_URL"
-	fi
-	export COMPOSE_VALKEY_URL
-}
-
-note_compose_host_override() {
-	if database_url_uses_local_host "$DATABASE_URL"; then
-		echo "Note: app overlay rewrites DATABASE_URL host to postgres (127.0.0.1 is for host app / infra-only)." >&2
-	fi
-	if valkey_url_uses_local_host "$VALKEY_URL"; then
-		echo "Note: app overlay rewrites VALKEY_URL host to valkey (127.0.0.1 is for host app / infra-only)." >&2
-	fi
-}
-
 container_set_compose_mode_local() {
 	COMPOSE_FILE_ARGS=(-f docker-compose.infra.yml -f docker-compose.app.base.yml -f docker-compose.app.with-infra.yml)
 }
 
 container_set_compose_mode_prod() {
 	COMPOSE_FILE_ARGS=(-f docker-compose.app.base.yml)
-}
-
-export_compose_prod_urls() {
-	COMPOSE_DATABASE_URL="$DATABASE_URL"
-	COMPOSE_VALKEY_URL="$VALKEY_URL"
-	export COMPOSE_DATABASE_URL COMPOSE_VALKEY_URL
 }
 
 container_load_compose_context() {
@@ -114,11 +68,10 @@ container_load_compose_context() {
 	esac
 	load_compose_env
 	if [[ "$mode" == "local" ]]; then
-		export_compose_database_url
-		export_compose_valkey_url
-		compose_sync_dotenv_urls
-	else
-		export_compose_prod_urls
+		if [[ -z "${POSTGRES_COMPOSE_URL:-}" ]] || [[ -z "${VALKEY_COMPOSE_URL:-}" ]]; then
+			echo "Path B requires postgres.compose_url and valkey.compose_url in config/profiles/${ENV_PROFILE:?set ENV_PROFILE}.toml" >&2
+			exit 1
+		fi
 	fi
 }
 
@@ -131,8 +84,8 @@ container_assert_prod_deploy_allowed() {
 		exit 1
 		;;
 	esac
-	if database_url_uses_local_host "$DATABASE_URL"; then
-		echo "Production deploy requires an external DATABASE_URL (127.0.0.1 is for local development)." >&2
+	if postgres_url_uses_local_host "$POSTGRES_URL"; then
+		echo "Production deploy requires an external POSTGRES_URL (127.0.0.1 is for local development)." >&2
 		exit 1
 	fi
 	if valkey_url_uses_local_host "$VALKEY_URL"; then
@@ -173,14 +126,6 @@ container_compose_wipe_all_profiles() {
 container_start_or_up() {
 	# Always up (not start) so env_file / environment changes apply; --build picks up image changes.
 	container_compose "${COMPOSE_FILE_ARGS[@]}" up -d --build --remove-orphans
-}
-
-container_ensure_stack_running() {
-	if container_app_exists; then
-		container_compose "${COMPOSE_FILE_ARGS[@]}" start
-	else
-		container_compose "${COMPOSE_FILE_ARGS[@]}" up -d --build
-	fi
 }
 
 container_wait_for_health() {

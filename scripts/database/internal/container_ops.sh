@@ -13,7 +13,7 @@ container_ops_init() {
 	# shellcheck source=scripts/container/internal/common.sh
 	source "$container_script_dir/internal/common.sh"
 	container_load_compose_context local
-	export DATABASE_URL COMPOSE_DATABASE_URL COMPOSE_VALKEY_URL
+	export POSTGRES_URL POSTGRES_COMPOSE_URL VALKEY_COMPOSE_URL
 
 	# shellcheck source=scripts/database/internal/common.sh
 	source "${DATABASE_SCRIPTS_DIR}/common.sh"
@@ -34,7 +34,7 @@ container_ops_run_app() {
 	else
 		container_compose "${COMPOSE_FILE_ARGS[@]}" run --rm \
 			-e "JWT_SECRET_KEY=${jwt}" \
-			-e "RUN_MIGRATIONS=false" \
+			-e "DEPLOY_RUN_MIGRATIONS=false" \
 			app "$@"
 	fi
 }

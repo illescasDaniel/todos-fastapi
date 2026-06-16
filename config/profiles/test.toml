@@ -1,0 +1,16 @@
+# Pytest / CI overlay — merges on top of config/base.toml when ENV_PROFILE=test.
+
+[postgres]
+db = "todos_test"
+password = "todos"
+url = "postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test"
+compose_url = "postgresql+asyncpg://todos:todos@postgres:5432/todos_test"
+test_url = "postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test"
+
+[jwt]
+secret_key = "test-secret-key-for-pytest-suite-32bytes!"
+
+[valkey]
+password = "test-valkey-password-for-ci"
+url = "valkey://:test-valkey-password-for-ci@127.0.0.1:6379/0"
+compose_url = "valkey://:test-valkey-password-for-ci@valkey:6379/0"

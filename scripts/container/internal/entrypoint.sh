@@ -6,8 +6,8 @@ export PYTHONPATH="${PYTHONPATH:-/app/src}"
 
 # WARNING: Running migrations on container start is only safe for single-replica deployments.
 # For multi-replica or zero-downtime deploys, run migrations as a one-shot pre-deploy step
-# in CI/CD instead (set RUN_MIGRATIONS=false and run: alembic upgrade head before rolling out).
-if [[ "${RUN_MIGRATIONS:?set RUN_MIGRATIONS in env profile}" == "true" ]]; then
+# in CI/CD instead (set DEPLOY_RUN_MIGRATIONS=false and run: alembic upgrade head before rolling out).
+if [[ "${DEPLOY_RUN_MIGRATIONS:?set DEPLOY_RUN_MIGRATIONS in env profile}" == "true" ]]; then
 	if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
 		echo "JWT_SECRET_KEY must be set before running migrations." >&2
 		exit 1

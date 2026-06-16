@@ -24,7 +24,7 @@ podman info --format '  version: {{.Version.Version}}  rootless: {{.Host.Securit
 
 echo ""
 echo "Next steps:"
-echo "  Full stack:  ./scripts/container/up.sh   # profile from DATABASE_URL"
+echo "  Full stack:  ./scripts/container/up.sh   # profile from POSTGRES_URL"
 echo "  Stop stack:  ./scripts/container/down.sh"
 echo "  Wipe volumes: ./scripts/database/wipe.sh"
 echo "  Seed data:   ./scripts/database/seed.sh"

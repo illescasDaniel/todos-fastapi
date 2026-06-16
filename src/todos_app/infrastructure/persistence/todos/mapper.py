@@ -20,6 +20,12 @@ def to_entities(orms: Iterable[TodoModel]) -> list[Todo]:
 	return [to_entity(orm) for orm in orms]
 
 
+def require_owner_id(entity: Todo) -> UUID:
+	if entity.owner_id is None:
+		raise ValueError("todo owner_id must be set before persist")
+	return entity.owner_id
+
+
 def to_orm(entity: Todo, *, id: UUID) -> TodoModel:
 	return TodoModel(
 		id=id,
@@ -27,5 +33,5 @@ def to_orm(entity: Todo, *, id: UUID) -> TodoModel:
 		description=entity.description,
 		priority=entity.priority,
 		completed=entity.completed,
-		owner_id=entity.owner_id,
+		owner_id=require_owner_id(entity),
 	)

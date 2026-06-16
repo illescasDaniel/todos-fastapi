@@ -1,50 +1,46 @@
 # MCP server (Cursor agent tools)
 
-**On this page:** [What it is](#what-it-is) · [Python environments](#python-environments) · [Install](#install) · [Test in Cursor](#test-in-cursor) · [Tools](#tools) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting)
+**On this page:** [What it is](#what-it-is) · [Python envs](#python-environments) · [Install](#install) · [Test in Cursor](#test-in-cursor) · [Tools](#tools) · [Config](#configuration) · [Troubleshooting](#troubleshooting)
 
-The [Todos Backend MCP](../mcp/todos-backend/) is a **stdio MCP server** that lets Cursor agents call the HTTP API and run local dev scripts (start stack, migrate, seed, etc.) through typed tools instead of raw `curl` and shell commands.
+[Todos Backend MCP](../mcp/todos-backend/) — stdio MCP server for typed API + lifecycle tools instead of raw `curl`/shell.
 
-Package path: [`mcp/todos-backend/`](../mcp/todos-backend/).
+Package: [`mcp/todos-backend/`](../mcp/todos-backend/).
 
 ## What it is
 
 ```text
-Cursor agent  →  MCP tools (stdio)  →  httpx  →  FastAPI (`todos_api_base_url` from env profile)
+Cursor agent  →  MCP tools (stdio)  →  httpx  →  FastAPI (MCP_API_BASE_URL)
                               ↘  subprocess  →  ./scripts/*.sh
 ```
 
-- **API tools** mirror the HTTP routes (`auth_login`, `todos_create`, `users_signup`, …).
-- **Lifecycle tools** wrap existing repo scripts (`stack_compose_up`, `db_migrate`, `db_seed`, …).
-- After `auth_login`, protected tools reuse the stored Bearer token unless you pass `access_token` explicitly.
+- **API tools** mirror HTTP (`auth_login`, `todos_create`, …)
+- **Lifecycle tools** wrap scripts (`stack_compose_up`, `db_migrate`, …)
+- After `auth_login`, protected tools reuse Bearer token unless `access_token` passed
 
-See the full tool catalog in [`mcp/todos-backend/README.md`](../mcp/todos-backend/README.md).
+Catalog: [`mcp/todos-backend/README.md`](../mcp/todos-backend/README.md).
 
 ## Python environments
 
-The MCP server uses **its own virtual environment**, separate from everything else:
+Separate venvs:
 
-| Environment | Path | Used for |
-|-------------|------|----------|
-| **MCP server** | `mcp/todos-backend/.venv` | Running the MCP process (`mcp`, `httpx`) |
-| **FastAPI app** | repo root `.venv` | `./scripts/start.sh`, pytest, Ruff on `todos_app` |
+| Env | Path | For |
+|-----|------|-----|
+| MCP | `mcp/todos-backend/.venv` | MCP process |
+| API | repo `.venv` | `start.sh`, pytest, Ruff |
 
-Cursor starts the MCP server with the interpreter configured in [`.cursor/mcp.json`](../.cursor/mcp.json) at the **repo root**:
+Cursor starts MCP via [`.cursor/mcp.json`](../.cursor/mcp.json):
 
 ```json
 "command": "${workspaceFolder}/mcp/todos-backend/.venv/bin/python"
 ```
 
-`${workspaceFolder}` resolves to the workspace root when you open the repo in Cursor. If interpolation does not work in your Cursor version, replace it with the absolute path to `mcp/todos-backend/.venv/bin/python`.
+Replace with absolute path if `${workspaceFolder}` fails.
 
-That means:
-
-- **Nothing is installed into your global/system Python** when you follow the install steps below.
-- The MCP server does **not** use the main API `.venv` for its own process.
-- Lifecycle tools such as `stack_start_host` may **invoke** repo scripts that activate the **API** `.venv` internally — that is expected; the MCP process itself still runs from `mcp/todos-backend/.venv`.
+- No global Python install
+- MCP process uses MCP venv, not API venv
+- Lifecycle tools may invoke scripts that activate API `.venv` — expected
 
 ## Install
-
-One-time setup (from repo root):
 
 ```bash
 cd mcp/todos-backend
@@ -53,66 +49,39 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-Prerequisites for the **API** and lifecycle tools (unchanged from normal dev):
-
-- [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py) with secrets (`ENV_PROFILE=local` in [`.cursor/mcp.json`](../.cursor/mcp.json) or shell)
-- **Podman** (or Docker) for compose lifecycle tools
-- API reachable at `http://127.0.0.1:${API_PORT}` (`api_port` in env profile) when using API tools
+API prerequisites: [`local.toml`](../config/profiles/local.toml), `ENV_PROFILE=local`, Podman, API at `http://127.0.0.1:${API_PORT}`.
 
 ## Test in Cursor
 
-This is the fastest path — it matches what works in practice:
-
-1. **Install** the MCP venv (see [Install](#install)) if you have not already.
-
-2. **Open** the repo root in Cursor  
-   (File → Open Folder → `.../todo`).
-
-3. **Enable the server** in the **Agents** view (MCP panel):
-   - Find **todos-backend**
-   - Toggle it **on**  
-   Cursor reads [`.cursor/mcp.json`](../.cursor/mcp.json) from the workspace root automatically.
-
-4. **Start the API** (from the main repo root, in a terminal):
-   ```bash
-   ./scripts/start.sh
-   ```
-   Or ask the agent to run `stack_compose_up` once the MCP is enabled.
-
-5. **Smoke test** in Agent chat — ask the agent to:
-   - run `health_check`
-   - run `auth_login` with `username=jane`, `password=changeme`
-   - run `todos_list` with `limit=5`
-
-You should see **todos-backend** tools listed when the server is connected.
-
-### Other ways to attach
+1. Install MCP venv
+2. Open repo root in Cursor
+3. Agents → **todos-backend** → on
+4. Start API: `./scripts/start.sh` or agent runs `stack_compose_up`
+5. Smoke: `health_check` → `auth_login` (jane/changeme) → `todos_list` limit=5
 
 | Method | When |
 |--------|------|
-| **Repo root workspace** | Recommended; [`.cursor/mcp.json`](../.cursor/mcp.json) is committed and ready to use |
-| **All projects** | Copy the `todos-backend` block into `~/.cursor/mcp.json` |
+| Repo workspace | Recommended — committed `.cursor/mcp.json` |
+| All projects | Copy block to `~/.cursor/mcp.json` |
 
-If `${workspaceFolder}` is unsupported, set `command` to the absolute path of `mcp/todos-backend/.venv/bin/python`. `TODOS_REPO_ROOT` is optional — when omitted, the server auto-detects the repo root from `config.py` (`parents[4]` from the installed package path).
+No `${workspaceFolder}`: absolute python path + `TODOS_REPO_ROOT` ([Config](#configuration)).
 
-### CLI (without Cursor)
+### CLI (no Cursor)
 
 ```bash
 cd mcp/todos-backend
 .venv/bin/python -m todos_mcp
 ```
 
-Runs the stdio server on its own; useful with the MCP inspector or debugging.
-
 ## Tools
 
-### API tools (HTTP mirror)
+### API (HTTP mirror)
 
 | Tool | HTTP |
 |------|------|
 | `health_check` | `GET /health` |
 | `auth_login` | `POST /auth/login` |
-| `auth_clear_session` | Clears stored token |
+| `auth_clear_session` | Clear token |
 | `users_signup` | `POST /users` |
 | `users_get_me` | `GET /users/me` |
 | `users_replace_me` | `PUT /users/me` |
@@ -127,88 +96,86 @@ Runs the stdio server on its own; useful with the MCP inspector or debugging.
 | `todos_patch` | `PATCH /todos/{todo_id}` |
 | `todos_delete` | `DELETE /todos/{todo_id}` |
 
-Responses are JSON strings: `{"ok": true, "status": 200, "data": ...}` on success, or `{"ok": false, "status": ..., "detail": ...}` on API errors.
+JSON: `{"ok": true, "status": 200, "data": ...}` or `{"ok": false, "status": ..., "detail": ...}`.
 
-### Lifecycle tools
+### Lifecycle
 
-#### Read-only / safe
-
-| Tool | Action |
-|------|--------|
-| `stack_health` | `curl` API `/health` |
-| `open_api_docs` | Open `TODOS_API_BASE_URL/docs` in the default browser |
-| `stack_start_host` | Background `./scripts/start.sh` (Path A) |
-| `stack_stop_host` | Stop MCP-spawned host process only |
-| `stack_compose_up` | `./scripts/container/up.sh` (Path B) |
-| `stack_compose_down` | `./scripts/container/down.sh` (without `remove=true`) |
-| `db_migrate` | `./scripts/database/migrate.sh` |
-
-#### Destructive (require `MCP_ALLOW_DESTRUCTIVE=true`)
-
-> **Warning:** These tools modify or destroy local data and are disabled by default.
-> Set `MCP_ALLOW_DESTRUCTIVE=true` in the MCP server env to enable them.
+**Safe**
 
 | Tool | Action |
 |------|--------|
-| `db_seed` | `./scripts/database/seed.sh` — inserts demo data (needs `APP_ENV=local`) |
-| `db_wipe` | `./scripts/database/wipe.sh --yes` — **destroys all local DB volumes** |
-| `stack_compose_down` with `remove=true` | Removes compose volumes |
+| `stack_health` | curl `/health` |
+| `open_api_docs` | Open docs in browser |
+| `stack_start_host` | Background `start.sh` (Path A) |
+| `stack_stop_host` | Stop MCP-spawned host only |
+| `stack_compose_up` | `up.sh` (Path B) |
+| `stack_compose_down` | `down.sh` (no `remove`) |
+| `db_migrate` | `migrate.sh` |
 
-### Example agent prompts
+**Destructive** (`MCP_ALLOW_DESTRUCTIVE=true`)
+
+> **Warning:** Modifies/destroys local data. Disabled by default.
+
+| Tool | Action |
+|------|--------|
+| `db_seed` | `seed.sh` (needs `APP_ENV=local`) |
+| `db_wipe` | `wipe.sh --yes` — destroys DB volumes |
+| `stack_compose_down` `remove=true` | Removes compose volumes |
+
+### Example prompts
 
 - “Log in as jane and list my todos.”
-- “Sign up `bob@example.com` / `bob`, log in, and create a high-priority todo.”
-- “Start the compose stack, seed the DB, and open the API docs.”
+- “Sign up bob, log in, create high-priority todo.”
+- “Compose up, seed, open API docs.”
 
 ## Configuration
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `todos_api_base_url` | From env profile | API base URL (no trailing slash) |
-| `ENV_PROFILE` | Yes (`local` in `.cursor/mcp.json`) | Loads [`src/env_config/profiles/<name>.py`](../src/env_config/) — any valid profile module name |
-| `TODOS_REPO_ROOT` | Yes (e.g. `${workspaceFolder}` in `.cursor/mcp.json`) | Working directory for lifecycle scripts |
-| `mcp_allow_destructive` | From env profile | Set `true` in `local.py` to enable destructive lifecycle tools |
-| `mcp_allow_remote_api` | From env profile | Set `true` to allow non-loopback API targets |
+| `MCP_API_BASE_URL` | From profile | API base (no trailing slash) |
+| `ENV_PROFILE` | Yes | Merges `profiles/<name>.toml` |
+| `TODOS_REPO_ROOT` | Yes | CWD for lifecycle scripts |
+| `MCP_ALLOW_DESTRUCTIVE` | Profile | `true` in `local.toml` for wipe/seed |
+| `MCP_ALLOW_REMOTE_API` | Profile | `true` for non-loopback API |
 
-Set in `.cursor/mcp.json` under `env`, or in the shell when running manually.
+Set in `.cursor/mcp.json` `env` or shell.
 
 ### Security defaults
 
-- **Destructive tools are off by default.** `db_wipe`, `db_seed`, and `stack_compose_down --remove` return an error unless `mcp_allow_destructive=true` in the active env profile. For local dev, set it in your local profile module (e.g. `local.py`). Do **not** enable in CI.
-- **SSRF guard is on by default.** `todos_api_base_url` is validated at startup; only loopback addresses are allowed unless `mcp_allow_remote_api=true`.
-- **Subprocesses inherit a minimal environment.** Only variables needed by shell scripts are forwarded; secrets are not passed to child processes. Scripts load config from env profiles on disk.
-- **Bearer token lifetime.** The session token is stored in process memory and cleared on shutdown via `atexit`. When passing `access_token` explicitly in tool arguments, note that the value appears in agent call logs — prefer `auth_login` once and let the session store handle it.
+- Destructive off unless `mcp.allow_destructive = true` in local profile. Not in CI.
+- SSRF guard: loopback only unless `MCP_ALLOW_REMOTE_API=true`.
+- Subprocesses get minimal env; scripts load profile from disk.
+- Bearer token in memory; cleared on shutdown. Prefer `auth_login` over passing `access_token` in logs.
 
 ## OpenAPI snapshot
 
-[`.cursor/openapi.snapshot.json`](../.cursor/openapi.snapshot.json) is a **gitignored** local reference for the HTTP surface (agents can `@`-reference it). Generated from `todos_app.main:app` — no running server required.
+[`.cursor/openapi.snapshot.json`](../.cursor/openapi.snapshot.json) — gitignored local HTTP reference. From `todos_app.main:app`, no running server.
 
-- **Automatic:** local `./scripts/quality/checks.sh` regenerates it before MCP tests (skipped when `CI=true`).
-- **Manual:** `./scripts/mcp/export_openapi.sh`
+- Auto: `checks.sh` before MCP tests (skip `CI=true`)
+- Manual: `./scripts/mcp/export_openapi.sh`
 
 ## Tests
 
-From `mcp/todos-backend/`:
-
 ```bash
+cd mcp/todos-backend
 .venv/bin/pytest -m "not integration"
-.venv/bin/pytest -m integration   # requires running API
+.venv/bin/pytest -m integration   # needs running API
 ```
 
-These tests are independent of the main repo coverage gate on `todos_app`.
+Outside main `todos_app` coverage gate.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---------|--------|
-| MCP server not listed | Open repo root as workspace; confirm `mcp/todos-backend/.venv` exists and `pip install -e .` succeeded |
-| Tools fail with connection errors | Start API (`./scripts/start.sh` or `stack_compose_up`); run `stack_health` |
-| `401` on protected tools | Run `auth_login` first, or pass `access_token` |
-| Lifecycle tools fail | Repo root auto-detect or `TODOS_REPO_ROOT` correct; Podman installed; `src/env_config/profiles/local.py` present |
-| `db_seed` fails | `app_env=local` in env profile (`ENV_PROFILE=local`) |
+| Server not listed | Repo root workspace; MCP venv + `pip install -e .` |
+| Connection errors | Start API; `stack_health` |
+| `401` | `auth_login` or `access_token` |
+| Lifecycle fails | `TODOS_REPO_ROOT`; Podman; `local.toml` |
+| `db_seed` fails | `app_env=local` |
 
 ## Limitations
 
-- `stack_start_host` tracks one background process; prefer `stack_compose_up` for reliable daemonized starts.
-- `db_wipe` destroys local volumes — use with care.
-- `verify_stack.sh` is not exposed as an MCP tool (too heavy for routine agent use).
+- `stack_start_host`: one background process — prefer `stack_compose_up`
+- `db_wipe` destroys volumes
+- `verify_stack.sh` not exposed (too heavy)

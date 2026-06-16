@@ -5,7 +5,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from env_config.loader import clear_env_settings_cache, get_env_settings
+from todos_app.core.config.loader import get_env_settings
 from todos_app.infrastructure.persistence.migrations import (
 	alembic_config,
 	downgrade_migrations_async,
@@ -19,11 +19,8 @@ _MIGRATION_TEST_URL = get_env_settings().postgres.test_url
 
 
 @pytest.fixture
-async def migration_db_url(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[str]:
-	monkeypatch.setenv("DATABASE_URL", _MIGRATION_TEST_URL)
-	clear_env_settings_cache()
+async def migration_db_url() -> AsyncIterator[str]:
 	yield _MIGRATION_TEST_URL
-	clear_env_settings_cache()
 
 
 async def test_given_empty_schema_when_upgrading_to_head_then_applies_migrations(

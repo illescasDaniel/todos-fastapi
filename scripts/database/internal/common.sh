@@ -6,7 +6,7 @@ load_database_url() {
 	local internal_dir="${DATABASE_SCRIPTS_DIR}/../../internal"
 	# shellcheck source=scripts/internal/load_env.sh
 	source "${internal_dir}/load_env.sh"
-	env_load_stack
+	env_apply_profile
 }
 
 database_clear_settings_cache() {
@@ -15,12 +15,5 @@ database_clear_settings_cache() {
 	fi
 	# shellcheck disable=SC1091
 	source ".venv/bin/activate"
-	PYTHONPATH=src python -c "from env_config.loader import clear_env_settings_cache; clear_env_settings_cache()"
-}
-
-database_url_uses_postgres() {
-	case "${DATABASE_URL%%://*}" in
-	postgresql+* | postgres+*) return 0 ;;
-	*) return 1 ;;
-	esac
+	PYTHONPATH=src python -c "from todos_app.core.config.loader import clear_env_settings_cache; clear_env_settings_cache()"
 }

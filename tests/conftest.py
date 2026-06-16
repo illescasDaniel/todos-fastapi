@@ -4,7 +4,7 @@ import os
 # Must be set before importing todos_app (profile loader runs at import time).
 os.environ["ENV_PROFILE"] = "test"
 
-from env_config.loader import clear_env_settings_cache, get_env_settings
+from todos_app.core.config.loader import clear_env_settings_cache, get_env_settings
 
 
 clear_env_settings_cache()

@@ -18,7 +18,7 @@ import json
 import os
 import sys
 
-from env_config.loader import clear_env_settings_cache
+from todos_app.core.config.loader import clear_env_settings_cache
 
 clear_env_settings_cache()
 

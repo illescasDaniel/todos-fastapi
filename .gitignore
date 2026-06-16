@@ -60,11 +60,11 @@ tools/plantuml.jar
 # Local OpenAPI reference for agents (from scripts/mcp/export_openapi.sh)
 .cursor/openapi.snapshot.json
 
-# Gitignored env profiles (copy from templates; committed modules stay tracked)
-src/env_config/profiles/*
-!src/env_config/profiles/example.py
-!src/env_config/profiles/production.example.py
-!src/env_config/profiles/test.py
+# Gitignored TOML profile overlays (copy from templates; committed overlays stay tracked)
+config/profiles/*
+!config/profiles/test.toml
+!config/profiles/example.toml
+!config/profiles/production.example.toml
 
 # Private keys and certificates
 *.pem
