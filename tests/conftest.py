@@ -1,31 +1,49 @@
 import os
+
+
+# Must be set before importing todos_app (profile loader runs at import time).
+os.environ["ENV_PROFILE"] = "test"
+
+from env_config.loader import clear_env_settings_cache, get_env_settings
+
+
+clear_env_settings_cache()
+_ENV = get_env_settings()
+_TEST_DATABASE_URL = _ENV.postgres.test_url
+
 from collections.abc import AsyncIterator
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-
-_TEST_DATABASE_URL = os.environ.get(
-	"TEST_DATABASE_URL",
-	"postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test",
-)
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-pytest-suite-32bytes!")
-os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
-
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from fakes.fast_password_hasher import get_test_password_hasher
 from fakes.user_auth_cache import FakeUserAuthCache
-from todos_app.core.dependencies import get_user_auth_cache
-from todos_app.core.settings import get_settings
+from todos_app.core.dependencies import get_password_hasher, get_user_auth_cache
 from todos_app.infrastructure.persistence.database import AsyncSessionLocal
 from todos_app.infrastructure.persistence.migrations import run_migrations_async
 from todos_app.main import app
 
 
-get_settings.cache_clear()
+_TEST_PASSWORD_HASHER = get_test_password_hasher()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def override_password_hasher():
+	"""Low-cost Argon2 for tests; full signup/login HTTP paths stay in dedicated cases."""
+	app.dependency_overrides[get_password_hasher] = lambda: _TEST_PASSWORD_HASHER
+	yield
+	app.dependency_overrides.pop(get_password_hasher, None)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def override_user_auth_cache():
+	"""Tests use FakeUserAuthCache — no live Valkey required (CI speed)."""
+	app.dependency_overrides[get_user_auth_cache] = lambda: FakeUserAuthCache()
+	yield
+	app.dependency_overrides.pop(get_user_auth_cache, None)
 
 
 async def _reset_test_database_schema() -> None:
@@ -37,14 +55,6 @@ async def _reset_test_database_schema() -> None:
 			await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
 	finally:
 		await engine.dispose()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def override_user_auth_cache():
-	"""Tests use FakeUserAuthCache — no live Valkey required (CI speed)."""
-	app.dependency_overrides[get_user_auth_cache] = lambda: FakeUserAuthCache()
-	yield
-	app.dependency_overrides.pop(get_user_auth_cache, None)
 
 
 @pytest.fixture(scope="session")

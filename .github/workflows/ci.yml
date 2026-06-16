@@ -54,11 +54,7 @@ jobs:
 
       - name: Quality gate
         env:
-          TEST_DATABASE_URL: postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test
-          POSTGRES_USER: todos
-          POSTGRES_PASSWORD: todos
-          POSTGRES_DB: todos_test
-          VALKEY_PASSWORD: test-valkey-password-for-ci
+          ENV_PROFILE: test
         run: ./scripts/quality/checks.sh
 
   scan:

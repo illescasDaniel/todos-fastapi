@@ -8,10 +8,10 @@ services:
     # H5: pinned to amd64 digest; re-pin with: podman manifest inspect docker.io/valkey/valkey:8-alpine
     image: docker.io/valkey/valkey:8-alpine@sha256:18c7010efe0a74c334ee01bd2c5632735d2c0d9518f85b9ad3d995314c6a0b7a
     container_name: todos-valkey
-    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}"]
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD in env profile}"]
     user: valkey
     ports:
-      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in config/ports.env}:${VALKEY_PORT:?set VALKEY_PORT in config/ports.env}:6379"
+      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in env profile}:${VALKEY_PORT:?set VALKEY_PORT in env profile}:6379"
     volumes:
       - todos-valkey-data:/data
     healthcheck:
@@ -29,12 +29,21 @@ services:
     # H5: pinned to amd64 digest; re-pin with: podman manifest inspect docker.io/library/postgres:16-alpine
     image: docker.io/library/postgres:16-alpine@sha256:79950da386bda7fcc9d57aa9aa9be6c6d7407596a9b8f68014b09a778a9ab316
     container_name: todos-postgres
+    # Local dev/test only — faster commits; never use these flags outside disposable local volumes.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
     ports:
-      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in config/ports.env}:${POSTGRES_PORT:?set POSTGRES_PORT in config/ports.env}:5432"
+      - "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in env profile}:${POSTGRES_PORT:?set POSTGRES_PORT in env profile}:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in env profile}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in env profile}
     volumes:
       - todos-postgres-data:/var/lib/postgresql/data
     healthcheck:

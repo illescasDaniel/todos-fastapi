@@ -197,12 +197,7 @@ fi
 
 # --- 6. pytest ---
 gate_step_start "pytest"
-export JWT_SECRET_KEY=test-secret-key-for-ci-suite-32bytes!
-export POSTGRES_USER=todos
-export POSTGRES_PASSWORD=todos
-export POSTGRES_PORT=5432
-export TEST_DATABASE_URL=postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test
-pytest_output="$("${quality_dir}/tests.sh" --coverage 2>&1)"
+pytest_output="$(env ENV_PROFILE=test "${quality_dir}/tests.sh" --coverage 2>&1)"
 pytest_exit=$?
 printf '%s\n' "${pytest_output}"
 emit_out="$(printf '%s' "${pytest_output}" | "${PYTHON}" "${internal_dir}/gate_emit.py" pytest 2>&1)"

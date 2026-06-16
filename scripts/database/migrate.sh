@@ -42,7 +42,10 @@ revision)
 	# shellcheck disable=SC1091
 	source ".venv/bin/activate"
 	export PYTHONPATH="src"
-	export JWT_SECRET_KEY="${JWT_SECRET_KEY:-local-dev-migrate-placeholder-secret}"
+	if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
+		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_load_stack)." >&2
+		exit 1
+	fi
 	alembic revision --autogenerate -m "$message"
 	;;
 upgrade | current | history)
@@ -51,7 +54,10 @@ upgrade | current | history)
 	container_ops_init
 	note_compose_host_override
 	container_ops_ensure_infra
-	export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$MIGRATE_PLACEHOLDER_SECRET}"
+	if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
+		echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_load_stack)." >&2
+		exit 1
+	fi
 	case "$cmd" in
 	upgrade)
 		container_ops_run_app alembic upgrade head

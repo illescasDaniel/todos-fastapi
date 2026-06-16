@@ -39,6 +39,7 @@ Homepage = "https://github.com/illescasDaniel/todos-fastapi"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["todos_app*", "env_config*"]
 
 # --- RUFF (Linter & Import Sorter) ---
 [tool.ruff]
@@ -48,7 +49,7 @@ src = ['src', 'tests']
 
 [tool.pytest.ini_options]
 testpaths = ['tests']
-pythonpath = ['tests']
+pythonpath = ['src', 'tests']
 asyncio_mode = 'auto'
 asyncio_default_fixture_loop_scope = 'session'
 asyncio_default_test_loop_scope = 'session'
@@ -58,7 +59,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["todos_app"]
+source = ["todos_app", "env_config"]
 omit = ["*/infrastructure/persistence/seeding/*", "alembic/env.py"]
 
 [tool.coverage.report]
@@ -103,6 +104,8 @@ lines-after-imports = 2
 "src/todos_app/main.py" = ["S101", "S104", "E501"]
 # Pre-existing long function signature; cannot be broken up without changing the API
 "src/todos_app/api/users/router.py" = ["E501"]
+# Profile modules intentionally contain placeholder secrets (example/test templates)
+"src/env_config/profiles/**" = ["S105", "S106"]
 
 # --- Type checking (Cursor Pyright / basedpyright) ---
 [tool.basedpyright]
@@ -111,7 +114,7 @@ include = ["src", "tests", "mcp/todos-backend/src", "mcp/todos-backend/tests"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
-extraPaths = ["tests", "mcp/todos-backend/src"]
+extraPaths = ["tests", "mcp/todos-backend/src", "src"]
 reportMissingTypeStubs = false
 executionEnvironments = [
 	{ root = "mcp/todos-backend/src/todos_mcp/tools", reportUnusedFunction = false },

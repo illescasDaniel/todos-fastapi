@@ -2,7 +2,11 @@
   "mcpServers": {
     "todos-backend": {
       "command": "${workspaceFolder}/mcp/todos-backend/.venv/bin/python",
-      "args": ["-m", "todos_mcp"]
+      "args": ["-m", "todos_mcp"],
+      "env": {
+        "ENV_PROFILE": "local",
+        "TODOS_REPO_ROOT": "${workspaceFolder}"
+      }
     }
   }
 }

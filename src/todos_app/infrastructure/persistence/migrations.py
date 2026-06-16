@@ -29,7 +29,7 @@ def _run_downgrade(connection: Connection, cfg: Config, revision: str) -> None:
 
 async def run_migrations_async(revision: str = "head") -> None:
 	cfg = alembic_config()
-	database_url = get_settings().database_url
+	database_url = get_settings().postgres.url
 	require_async_db_driver(database_url)
 	connectable = create_async_engine(database_url, poolclass=pool.NullPool)
 	try:
@@ -41,7 +41,7 @@ async def run_migrations_async(revision: str = "head") -> None:
 
 async def downgrade_migrations_async(revision: str = "base") -> None:
 	cfg = alembic_config()
-	database_url = get_settings().database_url
+	database_url = get_settings().postgres.url
 	require_async_db_driver(database_url)
 	connectable = create_async_engine(database_url, poolclass=pool.NullPool)
 	try:

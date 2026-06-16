@@ -4,13 +4,15 @@ from fastapi import APIRouter, Query, status
 
 from todos_app.api.openapi_responses import OpenAPIResponse
 from todos_app.api.todos import mappers
-from todos_app.api.todos.pagination import DEFAULT_LIMIT, MAX_LIMIT
 from todos_app.api.todos.schemas import TodoCreate, TodoListResponse, TodoPatch, TodoResponse, TodoUpdate
 from todos_app.application import todos as todo_use_cases
 from todos_app.core.auth import CurrentUserDep
 from todos_app.core.dependencies import TodoRepositoryDep
+from todos_app.core.settings import get_settings
 from todos_app.domain.auth.authorization import resolve_update_owner_id
 
+
+settings = get_settings()
 
 router = APIRouter(prefix="/todos", tags=["ToDos"])
 
@@ -28,9 +30,9 @@ async def list_todos(
 		description="Return todos with ids greater than this value. Omit for the first page.",
 	),
 	limit: int = Query(
-		DEFAULT_LIMIT,
+		settings.api.pagination_default_limit,
 		ge=1,
-		le=MAX_LIMIT,
+		le=settings.api.pagination_max_limit,
 		description="Maximum number of todos to return.",
 	),
 ) -> TodoListResponse:

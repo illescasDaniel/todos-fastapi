@@ -30,7 +30,6 @@ MANIFEST
 .venv/
 venv/
 ENV/
-env/
 /env/
 /venv/
 /.venv/
@@ -55,12 +54,17 @@ TODO.txt
 # Optional local PlantUML JAR (download via render script instructions)
 tools/plantuml.jar
 
-# Local environment (secrets)
+# Generated Compose env (from env profile export)
 .env
-.env.*
-!.env.example
-!.env.production.example
-config/ports.local.env
+
+# Local OpenAPI reference for agents (from scripts/mcp/export_openapi.sh)
+.cursor/openapi.snapshot.json
+
+# Gitignored env profiles (copy from templates; committed modules stay tracked)
+src/env_config/profiles/*
+!src/env_config/profiles/example.py
+!src/env_config/profiles/production.example.py
+!src/env_config/profiles/test.py
 
 # Private keys and certificates
 *.pem

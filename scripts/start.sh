@@ -27,8 +27,10 @@ database_clear_settings_cache
 # shellcheck disable=SC1091
 source ".venv/bin/activate"
 
+export PYTHONPATH="${PROJECT_ROOT}/src"
+
 if [[ "$mode" == "pro" ]]; then
-	fastapi run src/todos_app/main.py --port "$API_PORT"
+	fastapi run --entrypoint todos_app.main:app --port "$API_PORT"
 else
-	fastapi dev src/todos_app/main.py --port "$API_PORT"
+	fastapi dev --entrypoint todos_app.main:app --port "$API_PORT"
 fi

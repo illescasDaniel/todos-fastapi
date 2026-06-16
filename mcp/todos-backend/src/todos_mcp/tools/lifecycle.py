@@ -1,5 +1,4 @@
 import json
-import os
 
 from mcp.server.fastmcp import FastMCP
 
@@ -17,7 +16,9 @@ _DESTRUCTIVE_DISABLED = {"error": ("Destructive operations are disabled. Set MCP
 
 
 def _destructive_allowed() -> bool:
-	return os.getenv("MCP_ALLOW_DESTRUCTIVE", "").lower() in ("1", "true", "yes")
+	from env_config.loader import get_env_settings
+
+	return get_env_settings().mcp.allow_destructive
 
 
 def register(mcp: FastMCP, settings: Settings) -> None:

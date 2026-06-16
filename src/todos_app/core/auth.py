@@ -42,7 +42,7 @@ async def get_current_user(
 		username=db_user.username,
 		role=db_user.role,
 	)
-	await auth_cache.set_active_user(auth_user, ttl_seconds=settings.auth_user_cache_ttl_seconds)
+	await auth_cache.set_active_user(auth_user, ttl_seconds=settings.valkey.auth_user_cache_ttl_seconds)
 	return auth_user
 
 

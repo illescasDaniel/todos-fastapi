@@ -83,16 +83,20 @@ Runtime dependencies (from `pyproject.toml`):
 
 After dependencies are installed, configure the app and prepare the database **before** starting the API. The server does not create tables on startup — schema is applied with Alembic (see [Database migrations (Alembic)](database.md#database-migrations-alembic)).
 
-**1. Environment file**
+**1. Environment profile**
 
-Copy [`.env.example`](../.env.example) to `.env` in the project root and set at least:
+Copy [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py) to `src/env_config/profiles/local.py` (gitignored) and set secrets:
 
-- `JWT_SECRET_KEY` — required; generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
-- `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB` — required for the Compose PostgreSQL service
-- `VALKEY_PASSWORD` — required for the Compose Valkey service; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
-- Ports: [`config/ports.env`](../config/ports.env) (override locally via gitignored `config/ports.local.env`)
-- `DATABASE_URL` and `VALKEY_URL` are derived from ports + passwords — set them in `.env` only to override
-- `APP_ENV` — optional; `local` (default), `staging`, or `production`
+- `jwt_secret_key` — generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
+- `postgres_password`, `postgres_user`, `postgres_db`, `database_url`
+- `valkey_password`, `valkey_url`
+- Ports/bind addresses: `api_port`, `postgres_port`, `valkey_port`, `compose_*_bind`
+
+```bash
+export ENV_PROFILE=local   # required before running dev scripts
+```
+
+Tests and CI use `ENV_PROFILE=test` ([`profiles/test.py`](../src/env_config/profiles/test.py)). You can add more local profiles (e.g. `local2.py` with different ports) and set `ENV_PROFILE=local2` — see [Configuration and secrets](architecture.md#profile-selection-env_profile).
 
 **2. Create database tables**
 
@@ -132,7 +136,7 @@ chmod +x scripts/start.sh   # once, if needed
 
 | Step | Command |
 |------|---------|
-| Configure `.env` | Copy `.env.example`; set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `VALKEY_PASSWORD` |
+| Configure env profile | Copy [`example.py`](../src/env_config/profiles/example.py) to `local.py`; set `jwt_secret_key`, `postgres_*`, `valkey_*`, URLs |
 | Create tables | `./scripts/database/migrate.sh` |
 | Demo data (optional) | `./scripts/database/seed.sh` |
 | Run API | `./scripts/start.sh` |
@@ -169,16 +173,20 @@ All share `scripts/database/internal/setup.sh` and `ensure.sh`. For a new machin
 
 ### Option B: Running the FastAPI CLI directly
 
-You can also bypass the script and call the `fastapi` command line tool directly:
+You can also bypass the script and call the `fastapi` command line tool directly (with `ENV_PROFILE=local` and `PYTHONPATH=src` so `env_config` and `todos_app` resolve):
 
 - **Development Mode** (auto-reload):
   ```bash
-  fastapi dev src/todos_app/main.py --port "$API_PORT"
+  export ENV_PROFILE=local PYTHONPATH=src
+  fastapi dev --entrypoint todos_app.main:app --port "$API_PORT"
   ```
 - **Production Mode**:
   ```bash
-  fastapi run src/todos_app/main.py --port "$API_PORT"
+  export ENV_PROFILE=local PYTHONPATH=src
+  fastapi run --entrypoint todos_app.main:app --port "$API_PORT"
   ```
+
+Load shell exports first if `API_PORT` is unset: `eval "$(PYTHONPATH=src python -m env_config.export --shell)"`.
 
 ### Option C: Running `main.py` directly
 
@@ -194,9 +202,9 @@ The API does **not** create or migrate schema on startup. Run [`./scripts/databa
 
 Prod-like local development: same infra as Path A plus an app container. Requires rootless Podman — run `./scripts/install_podman.sh`. See [Deployment](deployment.md) for all three paths (A/B/C) and production deploy.
 
-**1. Configure `.env`**
+**1. Environment profile**
 
-Copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, and `VALKEY_PASSWORD`. Ports come from [`config/ports.env`](../config/ports.env); the app derives `DATABASE_URL` and `VALKEY_URL` on the host unless you override them in `.env`.
+Copy [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py) to `src/env_config/profiles/local.py` (gitignored) and set secrets:
 
 **2. Start the stack**
 
@@ -211,7 +219,7 @@ chmod +x scripts/container/*.sh   # once
 ./scripts/database/seed.sh
 ```
 
-For **production deploy** (Path C), copy [`.env.production.example`](../.env.production.example) to `.env`, then use `./scripts/container/deploy.sh` — see [Deployment — Path C example](deployment.md#path-c--app-only-compose-primary).
+For **production deploy** (Path C), copy [`production.example.py`](../src/env_config/profiles/production.example.py) to `src/env_config/profiles/production.py`, set `ENV_PROFILE=production`, then use `./scripts/container/deploy.sh` — see [Deployment — Path C example](deployment.md#path-c--app-only-compose-primary).
 
 ### Container scripts (Path B)
 
@@ -224,9 +232,9 @@ For **production deploy** (Path C), copy [`.env.production.example`](../.env.pro
 | `./scripts/database/seed.sh` | Reset DB and load demo users/todos (via app container) |
 | `./scripts/container/logs.sh` | Follow app logs |
 
-Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT}/docs` (`API_PORT` from `config/ports.env`).
+Migrations run automatically on container start (`RUN_MIGRATIONS=true`). Open `http://localhost:${API_PORT}/docs` (`api_port` in your env profile).
 
-**Infra-only + host app:** use `./scripts/start.sh` — URLs derived from `config/ports.env` + `.env` — see [Deployment](deployment.md#local-podman-compose).
+**Infra-only + host app:** use `./scripts/start.sh` — see [Deployment](deployment.md#local-podman-compose).
 
 ## Architecture diagrams (optional)
 

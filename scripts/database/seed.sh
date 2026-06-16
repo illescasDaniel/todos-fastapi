@@ -32,7 +32,10 @@ source "$SCRIPT_DIR/internal/container_ops.sh"
 container_ops_init
 note_compose_host_override
 container_ops_ensure_infra
-export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$MIGRATE_PLACEHOLDER_SECRET}"
+if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
+	echo "JWT_SECRET_KEY must be set (load via ENV_PROFILE and env_load_stack)." >&2
+	exit 1
+fi
 container_ops_assert_seed_allowed
 echo "Seeding database..."
 container_ops_run_app python -m todos_app.infrastructure.persistence.seeding

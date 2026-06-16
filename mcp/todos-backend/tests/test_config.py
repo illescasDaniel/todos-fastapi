@@ -1,34 +1,12 @@
-import os
-from pathlib import Path
-
 import pytest
 
-from todos_mcp.config import _load_dotenv_file, load_settings  # pyright: ignore[reportPrivateUsage]
+from todos_mcp.config import load_settings
 
 
-def test_load_dotenv_file_sets_unset_keys(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-	monkeypatch.delenv("MCP_ALLOW_DESTRUCTIVE", raising=False)
-	(tmp_path / ".env").write_text(
-		"# comment\nMCP_ALLOW_DESTRUCTIVE=true\n",
-		encoding="utf-8",
-	)
-	_load_dotenv_file(tmp_path / ".env")
-	assert os.environ["MCP_ALLOW_DESTRUCTIVE"] == "true"
-
-
-def test_load_dotenv_file_does_not_override_existing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-	monkeypatch.setenv("MCP_ALLOW_DESTRUCTIVE", "false")
-	(tmp_path / ".env").write_text("MCP_ALLOW_DESTRUCTIVE=true\n", encoding="utf-8")
-	_load_dotenv_file(tmp_path / ".env")
-	assert os.environ["MCP_ALLOW_DESTRUCTIVE"] == "false"
-
-
-def test_load_settings_reads_ports_and_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-	monkeypatch.delenv("TODOS_API_BASE_URL", raising=False)
-	monkeypatch.delenv("API_PORT", raising=False)
-	monkeypatch.delenv("API_HOST", raising=False)
-	monkeypatch.setenv("TODOS_REPO_ROOT", str(tmp_path))
-	(tmp_path / "config").mkdir()
-	(tmp_path / "config" / "ports.env").write_text("API_HOST=127.0.0.1\nAPI_PORT=9001\n", encoding="utf-8")
+def test_load_settings_reads_test_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+	repo_root = __import__("pathlib").Path(__file__).resolve().parents[3]
+	monkeypatch.setenv("ENV_PROFILE", "test")
+	monkeypatch.setenv("TODOS_REPO_ROOT", str(repo_root))
 	settings = load_settings()
-	assert settings.api_base_url == "http://127.0.0.1:9001"
+	assert settings.api_base_url == "http://127.0.0.1:8000"
+	assert settings.repo_root == repo_root

@@ -13,16 +13,16 @@ class JwtAccessTokenIssuer:
 
 	def issue(self, *, user_id: UUID, username: str, role: str, token_version: int) -> str:
 		now = datetime.now(tz=timezone.utc)
-		expires = now + timedelta(minutes=self._settings.jwt_expire_minutes)
+		expires = now + timedelta(minutes=self._settings.jwt.expire_minutes)
 		payload = {
 			"sub": str(user_id),
 			"username": username,
 			"role": role,
 			"tvs": token_version,
 			"jti": str(new_id()),
-			"iss": self._settings.jwt_issuer,
-			"aud": self._settings.jwt_audience,
+			"iss": self._settings.jwt.issuer,
+			"aud": self._settings.jwt.audience,
 			"iat": now,
 			"exp": expires,
 		}
-		return jwt.encode(payload=payload, key=self._settings.jwt_secret_key, algorithm=self._settings.jwt_algorithm)  # pyright: ignore[reportUnknownMemberType]
+		return jwt.encode(payload=payload, key=self._settings.jwt.secret_key, algorithm=self._settings.jwt.algorithm)  # pyright: ignore[reportUnknownMemberType]

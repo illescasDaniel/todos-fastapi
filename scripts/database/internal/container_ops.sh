@@ -26,7 +26,7 @@ container_ops_ensure_infra() {
 }
 
 container_ops_run_app() {
-	local jwt="${JWT_SECRET_KEY:-$MIGRATE_PLACEHOLDER_SECRET}"
+	local jwt="${JWT_SECRET_KEY:?set JWT_SECRET_KEY via env profile}"
 	if container_app_running; then
 		container_compose "${COMPOSE_FILE_ARGS[@]}" exec -T \
 			-e "JWT_SECRET_KEY=${jwt}" \

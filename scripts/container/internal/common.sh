@@ -5,10 +5,6 @@
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 COMPOSE_FILE_ARGS=()
-DATABASE_URL=""
-COMPOSE_DATABASE_URL=""
-VALKEY_URL=""
-COMPOSE_VALKEY_URL=""
 
 require_podman() {
 	if ! command -v podman &>/dev/null; then
@@ -41,43 +37,11 @@ jwt_secret_key_is_weak() {
 	return 1
 }
 
-require_env_file() {
-	local template="${1:?require_env_file: template filename required}"
-	if [[ -f "$PROJECT_ROOT/.env" ]]; then
-		return 0
-	fi
-	echo "Missing .env in $PROJECT_ROOT." >&2
-	echo "Create it from the template, then set your secrets:" >&2
-	echo "  cp ${template} .env" >&2
-	exit 1
-}
-
-# M8: Safe .env parser — use scripts/internal/load_env.sh (env_safe_source).
-
 load_compose_env() {
-	local saved_database_url="${DATABASE_URL:-}"
-	local saved_valkey_url="${VALKEY_URL:-}"
 	# shellcheck source=scripts/internal/load_env.sh
 	source "$PROJECT_ROOT/scripts/internal/load_env.sh"
 	env_load_stack
-	if [[ -n "$saved_database_url" ]]; then
-		export DATABASE_URL="$saved_database_url"
-	fi
-	if [[ -n "$saved_valkey_url" ]]; then
-		export VALKEY_URL="$saved_valkey_url"
-	fi
-}
-
-load_database_url() {
-	# shellcheck source=scripts/internal/env_urls.sh
-	source "$PROJECT_ROOT/scripts/internal/env_urls.sh"
-	env_resolve_database_url
-}
-
-load_valkey_url() {
-	# shellcheck source=scripts/internal/env_urls.sh
-	source "$PROJECT_ROOT/scripts/internal/env_urls.sh"
-	env_resolve_valkey_url
+	env_write_dotenv
 }
 
 database_url_uses_local_host() {
@@ -91,7 +55,7 @@ valkey_url_uses_local_host() {
 
 export_compose_database_url() {
 	if database_url_uses_local_host "$DATABASE_URL"; then
-		COMPOSE_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}"
+		COMPOSE_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in env profile}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in env profile}"
 	else
 		COMPOSE_DATABASE_URL="$DATABASE_URL"
 	fi
@@ -148,24 +112,18 @@ container_load_compose_context() {
 		exit 1
 		;;
 	esac
-	if [[ "$mode" == "local" ]]; then
-		require_env_file ".env.example"
-	else
-		require_env_file ".env.production.example"
-	fi
 	load_compose_env
-	load_database_url
-	load_valkey_url
 	if [[ "$mode" == "local" ]]; then
 		export_compose_database_url
 		export_compose_valkey_url
+		compose_sync_dotenv_urls
 	else
 		export_compose_prod_urls
 	fi
 }
 
 container_assert_prod_deploy_allowed() {
-	local app_env="${APP_ENV:?set APP_ENV in .env}"
+	local app_env="${APP_ENV:?set APP_ENV in env profile}"
 	case "$app_env" in
 	staging | production) ;;
 	*)
@@ -213,11 +171,8 @@ container_compose_wipe_all_profiles() {
 }
 
 container_start_or_up() {
-	if container_app_exists; then
-		container_compose "${COMPOSE_FILE_ARGS[@]}" start
-	else
-		container_compose "${COMPOSE_FILE_ARGS[@]}" up -d --build
-	fi
+	# Always up (not start) so env_file / environment changes apply; --build picks up image changes.
+	container_compose "${COMPOSE_FILE_ARGS[@]}" up -d --build --remove-orphans
 }
 
 container_ensure_stack_running() {
@@ -232,7 +187,7 @@ container_wait_for_health() {
 	local attempts="${1:-45}"
 	local i
 	for ((i = 1; i <= attempts; i++)); do
-		if curl -sf "http://localhost:${API_PORT:?set API_PORT in config/ports.env}/health" >/dev/null 2>&1; then
+		if curl -sf "http://localhost:${API_PORT:?set API_PORT in env profile}/health" >/dev/null 2>&1; then
 			return 0
 		fi
 		sleep 2
@@ -243,8 +198,8 @@ container_wait_for_health() {
 container_print_stack_ready() {
 	echo ""
 	echo "Stack is up."
-	echo "  API docs: http://localhost:${API_PORT:?set API_PORT in config/ports.env}/docs"
-	echo "  Health:   http://localhost:${API_PORT:?set API_PORT in config/ports.env}/health"
+	echo "  API docs: http://localhost:${API_PORT:?set API_PORT in env profile}/docs"
+	echo "  Health:   http://localhost:${API_PORT:?set API_PORT in env profile}/health"
 	echo "  Logs:     ./scripts/container/logs.sh"
 	echo "  Stop:     ./scripts/container/down.sh"
 }
@@ -252,7 +207,7 @@ container_print_stack_ready() {
 container_print_deploy_ready() {
 	echo ""
 	echo "App is up (production compose)."
-	echo "  Health: http://localhost:${API_PORT:?set API_PORT in config/ports.env}/health"
+	echo "  Health: http://localhost:${API_PORT:?set API_PORT in env profile}/health"
 	echo "  Logs:   ./scripts/container/logs.sh --prod"
 	echo "  Stop:   ./scripts/container/down.sh --prod"
 }

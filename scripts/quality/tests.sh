@@ -89,78 +89,22 @@ _tests_cleanup_postgres() {
 	exit "$exit_code"
 }
 
-_tests_apply_test_database_url() {
-	local url="$1"
-	local parsed_port parsed_user parsed_password parsed_db
-	parsed_port="$(echo "${url}" | sed -n 's|.*@[^:]*:\([0-9]*\)/.*|\1|p')"
-	parsed_user="$(echo "${url}" | sed -n 's|.*://\([^:]*\):.*|\1|p')"
-	parsed_password="$(echo "${url}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')"
-	parsed_db="$(echo "${url}" | sed -n 's|.*/\([^/?]*\)\(?:\?.*\)\?$|\1|p')"
-	if [[ -z "${parsed_port}" || -z "${parsed_user}" || -z "${parsed_password}" || -z "${parsed_db}" ]]; then
-		echo "Invalid TEST_DATABASE_URL: ${url}" >&2
-		exit 1
-	fi
-	export POSTGRES_USER="${parsed_user}"
-	export POSTGRES_PASSWORD="${parsed_password}"
-	export POSTGRES_PORT="${parsed_port}"
-	export POSTGRES_DB="${parsed_db}"
-	export TEST_DATABASE_URL="${url}"
-}
-
 _tests_bootstrap_postgres() {
-	local preset_test_url="${TEST_DATABASE_URL:-}"
-
-	if [[ -n "${preset_test_url}" ]]; then
-		export DATABASE_URL="${preset_test_url}"
+	if [[ -z "${ENV_PROFILE:-}" ]]; then
+		echo "ENV_PROFILE is not set. checks.sh sets ENV_PROFILE=test for pytest." >&2
+		exit 1
 	fi
 
 	# shellcheck source=scripts/database/internal/setup.sh
 	source "${script_dir}/database/internal/setup.sh"
 	database_load_env
-	# shellcheck source=scripts/internal/ports.sh
-	source "${script_dir}/internal/ports.sh"
 
-	local test_db_port test_db_user test_db_password
-	if [[ -n "${preset_test_url}" ]]; then
-		_tests_apply_test_database_url "${preset_test_url}"
-		test_db_port="${POSTGRES_PORT}"
-		test_db_user="${POSTGRES_USER}"
-		test_db_password="${POSTGRES_PASSWORD}"
-	else
-		if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
-			echo "Set POSTGRES_PASSWORD in .env (or export TEST_DATABASE_URL) before running tests." >&2
-			exit 1
-		fi
-		export TEST_DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT:?set POSTGRES_PORT in config/ports.env}/todos_test"
-		test_db_port="${POSTGRES_PORT}"
-		test_db_user="${POSTGRES_USER:?set POSTGRES_USER in .env}"
-		test_db_password="${POSTGRES_PASSWORD}"
-	fi
+	local test_db_port="${POSTGRES_PORT:?set POSTGRES_PORT via ENV_PROFILE test profile}"
+	local test_db_user="${POSTGRES_USER:?set POSTGRES_USER via ENV_PROFILE test profile}"
+	local test_db_password="${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD via ENV_PROFILE test profile}"
 
-	if [[ -n "${preset_test_url}" ]]; then
-		if _tests_postgres_auth_ok 127.0.0.1 "${test_db_port}" "${test_db_user}" "${test_db_password}"; then
-			echo "PostgreSQL is already reachable on 127.0.0.1:${test_db_port} with TEST_DATABASE_URL credentials."
-			# shellcheck source=scripts/database/internal/postgresql.sh
-			source "${DATABASE_SCRIPTS_DIR}/postgresql.sh"
-			if _postgres_container_running; then
-				_tests_ensure_test_database todos_test
-			fi
-			return 0
-		fi
-
-		echo "Preparing PostgreSQL for CI-parity tests (credentials from TEST_DATABASE_URL)..."
-		# shellcheck source=scripts/database/internal/postgresql.sh
-		source "${DATABASE_SCRIPTS_DIR}/postgresql.sh"
-		postgres_reset_container
-		_tests_started_postgres=true
-		trap _tests_cleanup_postgres EXIT INT TERM HUP
-		_tests_ensure_test_database todos_test
-		return 0
-	fi
-
-	if _tests_postgres_port_open 127.0.0.1 "${test_db_port}" \
-		&& _tests_postgres_auth_ok 127.0.0.1 "${test_db_port}" "${test_db_user}" "${test_db_password}"; then
-		echo "PostgreSQL is already reachable on 127.0.0.1:${test_db_port}."
+	if _tests_postgres_auth_ok 127.0.0.1 "${test_db_port}" "${test_db_user}" "${test_db_password}"; then
+		echo "PostgreSQL is already reachable on 127.0.0.1:${test_db_port} with test profile credentials."
 		# shellcheck source=scripts/database/internal/postgresql.sh
 		source "${DATABASE_SCRIPTS_DIR}/postgresql.sh"
 		if _postgres_container_running; then
@@ -169,9 +113,10 @@ _tests_bootstrap_postgres() {
 		return 0
 	fi
 
+	echo "Preparing PostgreSQL for tests (ENV_PROFILE=test credentials)..."
 	# shellcheck source=scripts/database/internal/postgresql.sh
 	source "${DATABASE_SCRIPTS_DIR}/postgresql.sh"
-	postgres_prepare_for_start
+	postgres_reset_container
 	_tests_started_postgres=true
 	trap _tests_cleanup_postgres EXIT INT TERM HUP
 	_tests_ensure_test_database todos_test

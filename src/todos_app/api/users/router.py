@@ -16,8 +16,11 @@ from todos_app.application import users as user_use_cases
 from todos_app.core.auth import CurrentUserDep
 from todos_app.core.dependencies import PasswordHasherDep, UserAuthCacheDep, UserRepositoryDep
 from todos_app.core.rate_limiting import limiter
+from todos_app.core.settings import get_settings
 from todos_app.domain.auth.authorization import require_admin
 
+
+settings = get_settings()
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -28,7 +31,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 	status_code=status.HTTP_201_CREATED,
 	responses=OpenAPIResponse.merge_write(),
 )
-@limiter.limit("10/minute")  # pyright: ignore[reportUntypedFunctionDecorator,reportUnknownMemberType]
+@limiter.limit(f"{settings.api.rate_limit_users_per_minute}/minute")  # pyright: ignore[reportUntypedFunctionDecorator,reportUnknownMemberType]
 async def create_user(
 	request: Request, user: UserSignup, repo: UserRepositoryDep, hasher: PasswordHasherDep
 ) -> UserResponse:

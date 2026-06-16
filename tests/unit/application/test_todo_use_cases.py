@@ -36,30 +36,51 @@ def repo() -> FakeTodoRepository:
 	)
 
 
-async def test_list_todos_for_actor_scopes_to_owner(repo: FakeTodoRepository) -> None:
+async def test_given_regular_user_actor_when_listing_todos_then_scopes_to_owner(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
+	actor_id = TEST_ACTOR_ID
+	actor_role = "user"
+
+	# when
 	page = await todo_use_cases.list_todos_for_actor(
 		repo,
 		last_id=None,
 		limit=10,
-		actor_id=TEST_ACTOR_ID,
-		actor_role="user",
+		actor_id=actor_id,
+		actor_role=actor_role,
 	)
+
+	# then
 	assert len(page.items) == 1
 	assert page.items[0].id == TEST_TODO_ID
 
 
-async def test_list_todos_for_actor_returns_all_for_admin(repo: FakeTodoRepository) -> None:
+async def test_given_admin_actor_when_listing_todos_then_returns_all(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
+	actor_id = TEST_ADMIN_ID
+	actor_role = ADMIN_ROLE
+
+	# when
 	page = await todo_use_cases.list_todos_for_actor(
 		repo,
 		last_id=None,
 		limit=10,
-		actor_id=TEST_ADMIN_ID,
-		actor_role=ADMIN_ROLE,
+		actor_id=actor_id,
+		actor_role=actor_role,
 	)
+
+	# then
 	assert len(page.items) == 2
 
 
-async def test_create_todo_for_actor_assigns_actor_as_owner(repo: FakeTodoRepository) -> None:
+async def test_given_regular_user_creating_todo_when_assigning_owner_then_uses_actor_as_owner(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	entity = Todo(
 		id=None,
 		title="New",
@@ -68,6 +89,8 @@ async def test_create_todo_for_actor_assigns_actor_as_owner(repo: FakeTodoReposi
 		completed=False,
 		owner_id=TEST_ACTOR_ID_B,
 	)
+
+	# when
 	created = await todo_use_cases.create_todo_for_actor(
 		repo,
 		entity,
@@ -75,10 +98,15 @@ async def test_create_todo_for_actor_assigns_actor_as_owner(repo: FakeTodoReposi
 		actor_role="user",
 		requested_owner_id=TEST_ACTOR_ID_B,
 	)
+
+	# then
 	assert created.owner_id == TEST_ACTOR_ID
 
 
-async def test_create_todo_for_actor_allows_admin_requested_owner(repo: FakeTodoRepository) -> None:
+async def test_given_admin_creating_todo_when_requesting_owner_then_uses_requested_owner(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	entity = Todo(
 		id=None,
 		title="Admin created",
@@ -87,6 +115,8 @@ async def test_create_todo_for_actor_allows_admin_requested_owner(repo: FakeTodo
 		completed=False,
 		owner_id=TEST_ACTOR_ID,
 	)
+
+	# when
 	created = await todo_use_cases.create_todo_for_actor(
 		repo,
 		entity,
@@ -94,31 +124,56 @@ async def test_create_todo_for_actor_allows_admin_requested_owner(repo: FakeTodo
 		actor_role=ADMIN_ROLE,
 		requested_owner_id=TEST_ACTOR_ID_B,
 	)
+
+	# then
 	assert created.owner_id == TEST_ACTOR_ID_B
 
 
-async def test_get_todo_for_actor_returns_owned_todo(repo: FakeTodoRepository) -> None:
+async def test_given_owned_todo_when_getting_for_regular_user_then_returns_todo(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
+	todo_id = TEST_TODO_ID
+	actor_id = TEST_ACTOR_ID
+	actor_role = "user"
+
+	# when
 	todo = await todo_use_cases.get_todo_for_actor(
 		repo,
-		TEST_TODO_ID,
-		actor_id=TEST_ACTOR_ID,
-		actor_role="user",
+		todo_id,
+		actor_id=actor_id,
+		actor_role=actor_role,
 	)
+
+	# then
 	assert todo.id == TEST_TODO_ID
 	assert todo.owner_id == TEST_ACTOR_ID
 
 
-async def test_get_todo_for_actor_raises_when_out_of_scope(repo: FakeTodoRepository) -> None:
+async def test_given_other_users_todo_when_getting_for_regular_user_then_raises_not_found(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
+	todo_id = TEST_TODO_ID_B
+	actor_id = TEST_ACTOR_ID
+	actor_role = "user"
+
+	# when
 	with pytest.raises(TodoNotFoundError):
 		await todo_use_cases.get_todo_for_actor(
 			repo,
-			TEST_TODO_ID_B,
-			actor_id=TEST_ACTOR_ID,
-			actor_role="user",
+			todo_id,
+			actor_id=actor_id,
+			actor_role=actor_role,
 		)
 
+	# then
 
-async def test_update_todo_for_actor_forbids_owner_change(repo: FakeTodoRepository) -> None:
+
+async def test_given_regular_user_changing_owner_when_updating_todo_then_raises_forbidden(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	merged = Todo(
 		id=TEST_TODO_ID,
 		title="Mine",
@@ -127,6 +182,8 @@ async def test_update_todo_for_actor_forbids_owner_change(repo: FakeTodoReposito
 		completed=False,
 		owner_id=UNKNOWN_ID,
 	)
+
+	# when
 	with pytest.raises(TodoOwnerChangeForbiddenError):
 		await todo_use_cases.update_todo_for_actor(
 			repo,
@@ -137,18 +194,31 @@ async def test_update_todo_for_actor_forbids_owner_change(repo: FakeTodoReposito
 			requested_owner_id=UNKNOWN_ID,
 		)
 
+	# then
 
-async def test_delete_todo_for_actor_removes_todo(repo: FakeTodoRepository) -> None:
+
+async def test_given_owned_todo_when_deleting_for_regular_user_then_removes_todo(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
+	todo_id = TEST_TODO_ID
+
+	# when
 	await todo_use_cases.delete_todo_for_actor(
 		repo,
-		TEST_TODO_ID,
+		todo_id,
 		actor_id=TEST_ACTOR_ID,
 		actor_role="user",
 	)
+
+	# then
 	assert await repo.get_by_id(TEST_TODO_ID) is None
 
 
-async def test_update_todo_for_actor_refetches_when_existing_todo_is_none(repo: FakeTodoRepository) -> None:
+async def test_given_missing_existing_todo_when_updating_then_refetches_and_persists(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	merged = Todo(
 		id=TEST_TODO_ID,
 		title="Updated",
@@ -157,6 +227,8 @@ async def test_update_todo_for_actor_refetches_when_existing_todo_is_none(repo: 
 		completed=True,
 		owner_id=TEST_ACTOR_ID,
 	)
+
+	# when
 	updated = await todo_use_cases.update_todo_for_actor(
 		repo,
 		TEST_TODO_ID,
@@ -166,11 +238,16 @@ async def test_update_todo_for_actor_refetches_when_existing_todo_is_none(repo: 
 		requested_owner_id=None,
 		existing_todo=None,
 	)
+
+	# then
 	assert updated.title == "Updated"
 	assert updated.completed is True
 
 
-async def test_update_todo_for_actor_allows_admin_owner_change(repo: FakeTodoRepository) -> None:
+async def test_given_admin_changing_owner_when_updating_todo_then_persists_new_owner(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	merged = Todo(
 		id=TEST_TODO_ID,
 		title="Mine",
@@ -179,6 +256,8 @@ async def test_update_todo_for_actor_allows_admin_owner_change(repo: FakeTodoRep
 		completed=False,
 		owner_id=TEST_ACTOR_ID_B,
 	)
+
+	# when
 	updated = await todo_use_cases.update_todo_for_actor(
 		repo,
 		TEST_TODO_ID,
@@ -187,10 +266,15 @@ async def test_update_todo_for_actor_allows_admin_owner_change(repo: FakeTodoRep
 		actor_role=ADMIN_ROLE,
 		requested_owner_id=TEST_ACTOR_ID_B,
 	)
+
+	# then
 	assert updated.owner_id == TEST_ACTOR_ID_B
 
 
-async def test_update_todo_for_actor_raises_when_persist_returns_none(repo: FakeTodoRepository) -> None:
+async def test_given_unknown_todo_id_when_updating_then_raises_not_found(
+	repo: FakeTodoRepository,
+) -> None:
+	# given
 	merged = Todo(
 		id=UNKNOWN_ID,
 		title="Missing",
@@ -199,6 +283,8 @@ async def test_update_todo_for_actor_raises_when_persist_returns_none(repo: Fake
 		completed=False,
 		owner_id=TEST_ACTOR_ID,
 	)
+
+	# when
 	with pytest.raises(TodoNotFoundError):
 		await todo_use_cases.update_todo_for_actor(
 			repo,
@@ -209,8 +295,11 @@ async def test_update_todo_for_actor_raises_when_persist_returns_none(repo: Fake
 			requested_owner_id=None,
 		)
 
+	# then
 
-async def test_delete_todo_for_actor_raises_when_delete_returns_false() -> None:
+
+async def test_given_delete_returns_false_when_deleting_todo_then_raises_not_found() -> None:
+	# given
 	class DeleteFailsRepository(FakeTodoRepository):
 		async def delete(self, todo_id: object, *, owner_id: object = None) -> bool:
 			return False
@@ -227,6 +316,8 @@ async def test_delete_todo_for_actor_raises_when_delete_returns_false() -> None:
 			),
 		]
 	)
+
+	# when
 	with pytest.raises(TodoNotFoundError):
 		await todo_use_cases.delete_todo_for_actor(
 			repo,
@@ -234,3 +325,5 @@ async def test_delete_todo_for_actor_raises_when_delete_returns_false() -> None:
 			actor_id=TEST_ACTOR_ID,
 			actor_role="user",
 		)
+
+	# then

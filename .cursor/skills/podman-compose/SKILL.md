@@ -12,7 +12,7 @@ Use this skill when the user wants **local full-stack** container development (b
 
 For **daily dev** (Path A — infra-only Compose + host app with hot reload), use `./scripts/start.sh` — see [docs/deployment.md](../../../docs/deployment.md#local-podman-compose).
 
-For **production deploy** (Path C), use `./scripts/container/deploy.sh` with [`.env.production.example`](../../../.env.production.example) — see [docs/deployment.md](../../../docs/deployment.md#path-c--app-only-compose-primary).
+For **production deploy** (Path C), copy [`production.example.py`](../../../src/env_config/profiles/production.example.py) to `profiles/production.py` and set `ENV_PROFILE=production` — see [docs/deployment.md](../../../docs/deployment.md#path-c--app-only-compose-primary).
 
 ## When NOT to use
 
@@ -26,7 +26,7 @@ For bare-metal API dev (venv, `./scripts/database/migrate.sh`, `./scripts/start.
 ## Prerequisites
 
 1. **Podman** installed (rootless). On Arch/CachyOS: `./scripts/install_podman.sh` or `sudo pacman -S --needed podman podman-compose`. See [docs/deployment.md](../../../docs/deployment.md#install-podman).
-2. **`.env`** at the repo root with secrets only (`JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `VALKEY_PASSWORD`). Ports in [`config/ports.env`](../../../config/ports.env); app derives `DATABASE_URL` / `VALKEY_URL` unless overridden in `.env`.
+2. **`ENV_PROFILE=local`** and gitignored [`src/env_config/profiles/local.py`](../../../src/env_config/profiles/local.py) with secrets. Scripts export vars for Compose.
 3. For **seed**: Podman and `.env` with `APP_ENV=local` (seed runs via app container).
 
 ## Compose layout (Path B)

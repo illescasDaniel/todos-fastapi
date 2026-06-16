@@ -10,4 +10,8 @@ lib_require_venv
 lib_activate_venv
 lib_ensure_mcp_installed
 
+if [[ "${CI:-}" != "true" ]]; then
+	"${LIB_REPO_ROOT}/scripts/mcp/export_openapi.sh"
+fi
+
 pytest mcp/todos-backend/tests/ "$@"

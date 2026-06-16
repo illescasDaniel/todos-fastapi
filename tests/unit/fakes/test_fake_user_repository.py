@@ -25,20 +25,29 @@ def _user(*, username: str) -> User:
 	)
 
 
-async def test_add_lowercases_username() -> None:
+async def test_given_mixed_case_username_when_adding_user_then_lowercases_username() -> None:
+	# given
 	repo = FakeUserRepository()
-	created = await repo.add(_user(username="Jane"))
+	user = _user(username="Jane")
 
+	# when
+	created = await repo.add(user)
+
+	# then
 	assert created.username == "jane"
 	found = await repo.get_by_username("JANE")
 	assert found is not None
 	assert found.id == created.id
 
 
-async def test_update_lowercases_username() -> None:
+async def test_given_mixed_case_username_when_updating_user_then_lowercases_username() -> None:
+	# given
 	repo = FakeUserRepository([_user(username="jane")])
+
+	# when
 	updated = await repo.update(_user(username="JANET"))
 
+	# then
 	assert updated is not None
 	assert updated.username == "janet"
 	stored = await repo.get_by_id(_USER_ID)
@@ -49,9 +58,14 @@ async def test_update_lowercases_username() -> None:
 	assert found.id == _USER_ID
 
 
-async def test_init_lowercases_preloaded_usernames() -> None:
-	repo = FakeUserRepository([_user(username="Jane")])
+async def test_given_preloaded_mixed_case_username_when_initializing_repo_then_lowercases_username() -> None:
+	# given
+	user = _user(username="Jane")
 
+	# when
+	repo = FakeUserRepository([user])
+
+	# then
 	stored = await repo.get_by_id(_USER_ID)
 	assert stored is not None
 	assert stored.username == "jane"

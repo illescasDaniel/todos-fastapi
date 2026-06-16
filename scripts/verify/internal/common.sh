@@ -1,9 +1,7 @@
 # shellcheck shell=bash
 # Shared helpers for scripts/verify/verify_stack.sh.
 
-VERIFY_API_HOST="${VERIFY_API_HOST:-127.0.0.1}"
-VERIFY_JWT_SECRET="${VERIFY_JWT_SECRET:-test-secret-key-for-verify-stack-32bytes!}"
-# M6: No changeme default — VERIFY_POSTGRES_PASSWORD must be set explicitly or match .env
+# VERIFY_API_HOST, VERIFY_API_PORT, VERIFY_JWT_SECRET are set from the loaded env profile.
 VERIFY_POSTGRES_PASSWORD="${VERIFY_POSTGRES_PASSWORD:-}"
 
 VERIFY_SUMMARY_NAMES=()
@@ -28,26 +26,40 @@ verify_require_prereqs() {
 	fi
 }
 
+verify_require_env_profile() {
+	if [[ -z "${ENV_PROFILE:-}" ]]; then
+		echo "verify_stack: ENV_PROFILE is not set." >&2
+		echo "Export a local dev profile (APP_ENV=local), for example:" >&2
+		echo "  cp src/env_config/profiles/example.py src/env_config/profiles/local.py" >&2
+		echo "  export ENV_PROFILE=local" >&2
+		exit 1
+	fi
+}
+
 verify_load_ports() {
+	verify_require_env_profile
 	# shellcheck source=scripts/internal/load_env.sh
 	source "${PROJECT_ROOT}/scripts/internal/load_env.sh"
-	# shellcheck source=scripts/internal/env_urls.sh
-	source "${PROJECT_ROOT}/scripts/internal/env_urls.sh"
 	env_load_stack
-	env_resolve_valkey_url
-	VERIFY_API_PORT="${VERIFY_API_PORT:-$API_PORT}"
-	export VERIFY_API_PORT
+	local app_env="${APP_ENV:?set APP_ENV in env profile}"
+	if [[ "$app_env" != "local" ]]; then
+		echo "verify_stack: active profile must have APP_ENV=local (got: ${app_env})." >&2
+		echo "Use a local dev profile module, not staging/production." >&2
+		exit 1
+	fi
+	VERIFY_API_HOST="${API_HOST:?set API_HOST via env profile}"
+	VERIFY_API_PORT="${API_PORT:?set API_PORT via env profile}"
+	VERIFY_JWT_SECRET="${JWT_SECRET_KEY:?set JWT_SECRET_KEY via env profile}"
+	export VERIFY_API_HOST VERIFY_API_PORT VERIFY_JWT_SECRET
+}
+
+verify_load_local_profile() {
+	unset DATABASE_URL VALKEY_URL COMPOSE_DATABASE_URL COMPOSE_VALKEY_URL TEST_DATABASE_URL
+	verify_load_ports
 }
 
 verify_apply_defaults() {
-	verify_load_ports
-	export APP_ENV=local
-	export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$VERIFY_JWT_SECRET}"
-	if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
-		echo "ERROR: POSTGRES_PASSWORD not set. Set it in .env or export POSTGRES_PASSWORD." >&2
-		exit 1
-	fi
-	export POSTGRES_PASSWORD
+	verify_load_local_profile
 }
 
 verify_port_available() {
@@ -101,13 +113,13 @@ verify_load_database_helpers() {
 verify_run_seeding() {
 	# shellcheck disable=SC1091
 	source "$PROJECT_ROOT/.venv/bin/activate"
-	PYTHONPATH=src python -c "
+	PYTHONPATH="${PROJECT_ROOT}/src" python -c "
+from env_config.loader import clear_env_settings_cache
 from todos_app.infrastructure.persistence.seeding.runner import assert_seed_allowed
-from todos_app.core.settings import get_settings
-get_settings.cache_clear()
+clear_env_settings_cache()
 assert_seed_allowed()
 "
-	PYTHONPATH=src python -m todos_app.infrastructure.persistence.seeding
+	PYTHONPATH="${PROJECT_ROOT}/src" python -m todos_app.infrastructure.persistence.seeding
 }
 
 verify_run_alembic_upgrade() {

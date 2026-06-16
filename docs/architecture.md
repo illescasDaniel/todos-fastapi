@@ -148,7 +148,7 @@ Only create a subpackage when you have real adapters for that system. Do not add
 
 | Piece | Responsibility |
 |-------|----------------|
-| **Driver URL** | `postgresql+asyncpg://…` — derived locally from `config/ports.env` + `.env` secrets, or set explicitly (Path C) — see [Database](database.md#postgresql) |
+| **Driver URL** | `postgresql+asyncpg://…` — set in env profile (`database_url`), or explicit for Path C — see [Database](database.md#postgresql) |
 | **`database.py`** | `require_async_db_driver`, `create_async_engine`, URL helpers (`database_url_is_postgresql`), `async_sessionmaker`, async `get_db`, `import_all_orm_models` |
 | **`migrations.py`** | `run_migrations_async()` — canonical programmatic `alembic upgrade` (tests, seeding) |
 | **`<feature>/`** | Per-aggregate adapters: `orm.py`, `mapper.py`, `repository.py` (dialect-agnostic SQLAlchemy) |
@@ -160,7 +160,7 @@ Only create a subpackage when you have real adapters for that system. Do not add
 
 **Dependencies:** `sqlalchemy`, `asyncpg`, and `greenlet` in core (`pyproject.toml`). `require_async_db_driver` checks the asyncpg module before `create_async_engine`. Request-scoped code must not use synchronous `Session` for queries; keep async in repositories and routes.
 
-**Tests** use a PostgreSQL test database ([`tests/conftest.py`](../../tests/conftest.py), default `TEST_DATABASE_URL`); they do not require Compose volumes but need PostgreSQL reachable on `127.0.0.1:${POSTGRES_PORT}` (`POSTGRES_PORT` from `config/ports.env`).
+**Tests** use a PostgreSQL test database ([`tests/conftest.py`](../../tests/conftest.py), `ENV_PROFILE=test`); they do not require Compose volumes but need PostgreSQL reachable on `127.0.0.1` at the port in [`profiles/test.py`](../src/env_config/profiles/test.py).
 
 **Transactions:** `get_db` owns the unit of work for HTTP requests—it commits after the handler returns successfully and rolls back on exceptions. Repository adapters stage changes (`execute`, `add`, `flush`) but do not call `commit()`, so multiple adapter calls in one request share a single transaction.
 
@@ -172,7 +172,7 @@ If storage grows beyond a single database (e.g. S3 for attachments), add sibling
 
 | Piece | Responsibility |
 |-------|----------------|
-| **`VALKEY_URL`** | Valkey connection URL — derived locally from `config/ports.env` + `.env` secrets, or set explicitly (Path C) — see [Deployment](../docs/deployment.md#local-podman-compose) |
+| **`VALKEY_URL`** | Valkey connection URL — set in env profile, or explicit for Path C — see [Deployment](../docs/deployment.md#local-podman-compose) |
 | **`user_auth_cache_codec.py`** | JSON encode/decode for `AuthenticatedUser` cache entries |
 | **`valkey_client.py`** | `require_valkey_driver`, `create_valkey_client` |
 | **`valkey_user_auth_cache.py`** | Valkey adapter for `UserAuthCache` port |
@@ -221,18 +221,20 @@ Inject the port via `TodoRepositoryDep`, resolve owner scope from the authentica
 ```python
 from fastapi import Query
 
-from todos_app.api.todos.pagination import DEFAULT_LIMIT, MAX_LIMIT
-from todos_app.api.todos.schemas import TodoListResponse
-from todos_app.core.auth import CurrentUserDep
-from todos_app.core.dependencies import TodoRepositoryDep
-from todos_app.domain.auth.authorization import list_owner_filter
+from todos_app.core.settings import get_settings
+
+settings = get_settings()
 
 @router.get("", response_model=TodoListResponse)
 async def list_todos(
     repo: TodoRepositoryDep,
     current_user: CurrentUserDep,
     last_id: UUID | None = Query(None),
-    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    limit: int = Query(
+        settings.api.pagination_default_limit,
+        ge=1,
+        le=settings.api.pagination_max_limit,
+    ),
 ) -> TodoListResponse:
     owner_filter = list_owner_filter(
         actor_id=current_user.user_id, actor_role=current_user.role
@@ -249,25 +251,55 @@ Add new `get_*_repository` factories and `*Dep` aliases in `core/dependencies.py
 
 ## Configuration and secrets
 
-Runtime configuration lives in [`src/todos_app/core/settings.py`](../src/todos_app/core/settings.py). Values load with **pydantic-settings** from, in order: [`config/ports.env`](../config/ports.env), optional gitignored `config/ports.local.env`, then `.env` at the project root.
+Runtime configuration uses **profile-based Python modules** under [`src/env_config/`](../src/env_config/):
 
-| Variable | Required | Default / derivation | Purpose |
-|----------|----------|----------------------|---------|
-| `JWT_SECRET_KEY` | yes | — | HMAC signing key for access tokens issued at login |
-| `POSTGRES_PASSWORD` | yes (local, when `DATABASE_URL` unset) | — | PostgreSQL password; used to derive local `DATABASE_URL` |
-| `POSTGRES_USER` | yes (local scripts/Compose) | — | PostgreSQL user (typically `todos`) |
-| `POSTGRES_DB` | yes (local scripts/Compose) | — | PostgreSQL database name (typically `todos`) |
-| `VALKEY_PASSWORD` | yes (local Compose) | — | Valkey password; used to derive local `VALKEY_URL` when unset |
-| `DATABASE_URL` | no | Derived locally from ports + secrets | SQLAlchemy async PostgreSQL URL |
-| `VALKEY_URL` | no | Derived locally from ports + secrets | Valkey URL for auth user cache |
-| `POSTGRES_PORT`, `VALKEY_PORT`, `API_HOST`, `API_PORT` | no | From `config/ports.env` | Host ports and bind addresses |
-| `APP_ENV` | no | `local` | Environment label (`local`, `staging`, `production`) |
-| `JWT_EXPIRE_MINUTES` | no | `60` | Access token lifetime in minutes |
-| `AUTH_USER_CACHE_TTL_SECONDS` | no | `120` | TTL for cached authenticated user identity |
+| Piece | Role |
+|-------|------|
+| [`schema.py`](../src/env_config/schema.py) | `EnvSettings` root + nested groups (`ApiSettings`, `JwtSettings`, `PostgresSettings`, …); all fields required; validation only |
+| [`profiles/example.py`](../src/env_config/profiles/example.py) | Committed local template — copy to a gitignored profile (e.g. `local.py`, `local2.py`) |
+| [`profiles/test.py`](../src/env_config/profiles/test.py) | Committed CI/pytest values (`ENV_PROFILE=test`) |
+| [`profiles/production.example.py`](../src/env_config/profiles/production.example.py) | Production template — copy to gitignored `production.py` on deploy host |
+| [`loader.py`](../src/env_config/loader.py) | `ENV_PROFILE=<name>` → load `profiles/<name>.py` → `get_env_settings()` |
+| [`export.py`](../src/env_config/export.py) | Emit shell exports / generated `.env` for Compose |
 
-Access tokens are always signed with **HS256**; the algorithm is fixed in `settings.py` and is not configurable via environment variables.
+[`core/settings.py`](../src/todos_app/core/settings.py) re-exports `get_settings()` / `Settings` for existing imports.
 
-**Local setup:** copy [`.env.example`](../.env.example) to `.env` for Paths A and B (secrets only), or [`.env.production.example`](../.env.production.example) for Path C deploy (explicit `DATABASE_URL` / `VALKEY_URL`). Set `JWT_SECRET_KEY` to a long random string (for example `python -c "import secrets; print(secrets.token_urlsafe(64))"`). `.env` is listed in `.gitignore` and must not be committed.
+### Profile selection (`ENV_PROFILE`)
+
+`ENV_PROFILE` must be set explicitly before scripts or the app load configuration — there is no silent default.
+
+The value is the **module name** (not a path): `export ENV_PROFILE=local` loads [`profiles/local.py`](../src/env_config/profiles/local.py). Any valid identifier works — for example `local2` for a second local stack with different ports:
+
+```bash
+cp src/env_config/profiles/example.py src/env_config/profiles/local2.py
+# edit ports, database_url, secrets in local2.py
+export ENV_PROFILE=local2
+```
+
+**Rules:**
+
+- Name must match `^[a-z][a-z0-9_]*$` (lowercase identifier; blocks `../other` and dotted paths).
+- `example` is reserved (template only — copy it, do not load it directly).
+- `production.example` is not a valid name (dots rejected); use `production` after copying the template.
+- Secret-bearing profile files are **gitignored** (see `.gitignore`); only `example.py`, `production.example.py`, and `test.py` stay committed.
+
+**`app_env` vs profile name:** the filename (`local`, `local2`, `production`, …) only selects which module loads. Runtime behavior (OpenAPI visibility, seed guards, production URL validation) comes from the `app_env` field inside that module (`local`, `staging`, or `production`).
+
+**Local setup (default profile name `local`):**
+
+```bash
+cp src/env_config/profiles/example.py src/env_config/profiles/local.py
+# edit secrets and URLs in local.py
+export ENV_PROFILE=local   # required — set before running scripts
+```
+
+Shell scripts and Compose load vars via `python -m env_config.export --shell` (see [`scripts/internal/load_env.sh`](../scripts/internal/load_env.sh)). Compose still uses a generated gitignored `.env` from `env_write_dotenv`.
+
+**Container listen port:** The app container always listens on internal port **8000** (Dockerfile `CMD`, healthcheck). Host binding uses `api_port` from the profile: `${COMPOSE_APP_BIND}:${API_PORT}:8000`.
+
+**Package layout:** `env_config` lives alongside `todos_app` under `src/` (same wheel, `PYTHONPATH=src`). MCP imports it by adding `repo_root/src` to `sys.path` — not a separate distribution.
+
+**Runtime overrides:** after loading the profile module, `get_env_settings()` merges any already-set process env vars (Compose `environment`, orchestrator injection) over profile values — so Path B can inject `@postgres` / `@valkey` URLs without editing `local.py` in the image.
 
 `get_settings()` is cached with `@lru_cache` and exposed to routes via `SettingsDep` in `core/dependencies.py`.
 
@@ -319,84 +351,92 @@ Source: [`docs/diagram/auth_sequence.puml`](diagram/auth_sequence.puml)
 
 Invalid or missing bearer tokens return **401** (`Could not validate credentials`). Todo routes return **404** when a todo is missing or outside the actor's scope (regular users: `You don't have a todo with this id`; admins: `Todo not found`). **403** is reserved for disallowed actions (for example a non-admin changing `owner_id` on a todo update, or a non-admin calling admin-only user routes).
 
-Dependency: **PyJWT** (see `pyproject.toml`). **pydantic-settings** comes via `fastapi[standard]`.
+Dependency: **PyJWT** (see `pyproject.toml`). **EnvSettings** uses Pydantic validation in `src/env_config/schema.py` (not pydantic-settings dotenv loading).
 
 ## Package layout
 
 ```text
-src/todos_app/
-├── main.py                          # FastAPI app, router includes, uvicorn entry
-├── core/                            # cross-cutting wiring (no business rules)
-│   ├── logging.py                   # configure_logger
-│   ├── auth.py                      # HTTPBearer, get_current_user, CurrentUserDep
-│   ├── settings.py                  # pydantic-settings (JWT secret, algorithm, expiry)
-│   ├── dependencies.py              # Depends factories and *Dep Annotated aliases
-│   ├── http_errors.py               # shared error detail strings for handlers
-│   ├── error_responses.py           # OpenAPI-oriented DB error examples
-│   └── exceptions.py                # register_exception_handlers (app/domain/DB errors → HTTP)
-├── application/                     # use-case orchestration; no FastAPI or Pydantic
-│   ├── auth.py                      # authenticate (login orchestration)
-│   ├── errors.py                    # UserNotFoundError, TodoNotFoundError, …
-│   ├── users.py                     # create, load, update, deactivate, hard delete
-│   └── todos.py                     # actor-scoped get, update, delete
-├── domain/                          # business meaning; no FastAPI or SQLAlchemy
-│   ├── auth/
-│   │   ├── access_token_issuer.py   # AccessTokenIssuer Protocol
-│   │   ├── access_token_verifier.py # AccessTokenVerifier Protocol
-│   │   ├── authenticated_user.py    # AuthenticatedUser dataclass
-│   │   ├── authorization.py         # is_admin, list_owner_filter, owner resolution
-│   │   ├── password_hasher.py       # PasswordHasher Protocol
-│   │   └── user_auth_cache.py       # UserAuthCache Protocol
-│   ├── todos/
-│   │   ├── entity.py                # Todo dataclass
-│   │   ├── page.py                  # TodoPage (cursor list result)
-│   │   ├── field_limits.py          # max lengths for validation alignment
-│   │   └── repository.py            # TodoRepository Protocol
-│   └── users/
-│       ├── entity.py                # User dataclass
-│       ├── field_limits.py
-│       └── repository.py            # UserRepository Protocol (incl. delete)
-├── infrastructure/                  # adapters to external systems
-│   ├── auth/
-│   │   ├── argon2_password_hasher.py
-│   │   ├── jwt_access_token_issuer.py
-│   │   └── jwt_access_token_verifier.py
-│   ├── cache/
-│   │   ├── user_auth_cache_codec.py
-│   │   ├── valkey_client.py
-│   │   └── valkey_user_auth_cache.py
-│   └── persistence/
-│       ├── database.py              # async engine, AsyncSession, get_db, import_all_orm_models
-│       ├── migrations.py            # run_migrations_async() — Alembic upgrade/downgrade
-│       ├── seeding/
-│       │   ├── __main__.py          # python -m todos_app.infrastructure.persistence.seeding
-│       │   ├── runner.py            # reset_and_seed_defaults
-│       │   ├── default_users.sql
-│       │   └── default_todos.sql
-│       ├── todos/
-│       │   ├── orm.py               # TodoModel
-│       │   ├── mapper.py            # ORM ↔ Todo entity
-│       │   └── repository.py        # SqlAlchemyTodoRepository
-│       └── users/
-│           ├── orm.py               # UserModel
-│           ├── mapper.py            # ORM ↔ User entity
-│           └── repository.py        # SqlAlchemyUserRepository (update, hard delete + cascade)
-└── api/                             # HTTP boundary: routers, Pydantic schemas, schema/entity mappers
-    ├── openapi_responses.py         # OpenAPIResponse enum and merge_* helpers
-    ├── auth/
-    │   ├── router.py                # POST /auth/login
-    │   └── schemas.py
-    ├── health/
-    │   └── router.py                # GET /health
-    ├── todos/
-    │   ├── router.py                # CRUD + PATCH; delegates writes to application/todos
-    │   ├── schemas.py               # TodoCreate, TodoUpdate, TodoPatch, TodoResponse, …
-    │   ├── mappers.py               # schema/entity mapping and patch merge
-    │   └── pagination.py            # DEFAULT_LIMIT, MAX_LIMIT
-    └── users/
-        ├── router.py                # POST /users; GET/PUT/PATCH /me; admin /{user_id}; require_admin on admin routes
-        ├── schemas.py               # UserSignup, UserSelf*, UserAdmin*, UserResponse
-        └── mappers.py               # signup/replace/patch merge
+src/
+├── env_config/                      # profile-based runtime config (bundled with app wheel)
+│   ├── schema.py                    # EnvSettings (Pydantic validation)
+│   ├── loader.py                    # ENV_PROFILE → load profile → get_env_settings()
+│   ├── export.py                    # shell / dotenv export for scripts and Compose
+│   └── profiles/
+│       ├── example.py               # local template → copy to gitignored local.py
+│       ├── test.py                  # CI / pytest (ENV_PROFILE=test)
+│       └── production.example.py    # production template → copy to production.py
+└── todos_app/
+    ├── main.py                          # FastAPI app, router includes, uvicorn entry
+    ├── core/                            # cross-cutting wiring (no business rules)
+    │   ├── logging.py                   # configure_logger
+    │   ├── auth.py                      # HTTPBearer, get_current_user, CurrentUserDep
+    │   ├── settings.py                  # shim → env_config.get_env_settings()
+    │   ├── dependencies.py              # Depends factories and *Dep Annotated aliases
+    │   ├── http_errors.py               # shared error detail strings for handlers
+    │   ├── error_responses.py           # OpenAPI-oriented DB error examples
+    │   └── exceptions.py                # register_exception_handlers (app/domain/DB errors → HTTP)
+    ├── application/                     # use-case orchestration; no FastAPI or Pydantic
+    │   ├── auth.py                      # authenticate (login orchestration)
+    │   ├── errors.py                    # UserNotFoundError, TodoNotFoundError, …
+    │   ├── users.py                     # create, load, update, deactivate, hard delete
+    │   └── todos.py                     # actor-scoped get, update, delete
+    ├── domain/                          # business meaning; no FastAPI or SQLAlchemy
+    │   ├── auth/
+    │   │   ├── access_token_issuer.py   # AccessTokenIssuer Protocol
+    │   │   ├── access_token_verifier.py # AccessTokenVerifier Protocol
+    │   │   ├── authenticated_user.py    # AuthenticatedUser dataclass
+    │   │   ├── authorization.py         # is_admin, list_owner_filter, owner resolution
+    │   │   ├── password_hasher.py       # PasswordHasher Protocol
+    │   │   └── user_auth_cache.py       # UserAuthCache Protocol
+    │   ├── todos/
+    │   │   ├── entity.py                # Todo dataclass
+    │   │   ├── page.py                  # TodoPage (cursor list result)
+    │   │   ├── field_limits.py          # max lengths for validation alignment
+    │   │   └── repository.py            # TodoRepository Protocol
+    │   └── users/
+    │       ├── entity.py                # User dataclass
+    │       ├── field_limits.py
+    │       └── repository.py            # UserRepository Protocol (incl. delete)
+    ├── infrastructure/                  # adapters to external systems
+    │   ├── auth/
+    │   │   ├── argon2_password_hasher.py
+    │   │   ├── jwt_access_token_issuer.py
+    │   │   └── jwt_access_token_verifier.py
+    │   ├── cache/
+    │   │   ├── user_auth_cache_codec.py
+    │   │   ├── valkey_client.py
+    │   │   └── valkey_user_auth_cache.py
+    │   └── persistence/
+    │       ├── database.py              # async engine, AsyncSession, get_db, import_all_orm_models
+    │       ├── migrations.py            # run_migrations_async() — Alembic upgrade/downgrade
+    │       ├── seeding/
+    │       │   ├── __main__.py          # python -m todos_app.infrastructure.persistence.seeding
+    │       │   ├── runner.py            # reset_and_seed_defaults
+    │       │   ├── default_users.sql
+    │       │   └── default_todos.sql
+    │       ├── todos/
+    │       │   ├── orm.py               # TodoModel
+    │       │   ├── mapper.py            # ORM ↔ Todo entity
+    │       │   └── repository.py        # SqlAlchemyTodoRepository
+    │       └── users/
+    │           ├── orm.py               # UserModel
+    │           ├── mapper.py            # ORM ↔ User entity
+    │           └── repository.py        # SqlAlchemyUserRepository (update, hard delete + cascade)
+    └── api/                             # HTTP boundary: routers, Pydantic schemas, schema/entity mappers
+        ├── openapi_responses.py         # OpenAPIResponse enum and merge_* helpers
+        ├── auth/
+        │   ├── router.py                # POST /auth/login
+        │   └── schemas.py
+        ├── health/
+        │   └── router.py                # GET /health
+        ├── todos/
+        │   ├── router.py                # CRUD + PATCH; delegates writes to application/todos
+        │   ├── schemas.py               # TodoCreate, TodoUpdate, TodoPatch, TodoResponse, …
+        │   ├── mappers.py               # schema/entity mapping and patch merge
+        └── users/
+            ├── router.py                # POST /users; GET/PUT/PATCH /me; admin /{user_id}; require_admin on admin routes
+            ├── schemas.py               # UserSignup, UserSelf*, UserAdmin*, UserResponse
+            └── mappers.py               # signup/replace/patch merge
 ```
 
 Use-case orchestration lives in `application/`. The `api/` layer maps request/response schemas and calls use cases; list/create routes that are a single repo call may stay inline in the router until shared logic appears.
@@ -514,15 +554,19 @@ Application unit tests inject **`FakeTodoRepository`**, **`FakeUserRepository`**
 Shared fixtures are in [`tests/conftest.py`](../tests/conftest.py):
 
 - **`initialized_db`** (session) — at session **start**, drops and recreates the `public` schema, then runs `run_migrations_async("head")`
+- **`override_password_hasher`** (session autouse) — `FastPasswordHasher` for faster integration setup
 - **`db_session`** — per-test `AsyncSession` with rollback after the test (persistence tests)
-- **`client`** — `httpx.AsyncClient` against the FastAPI app via `ASGITransport` (API tests)
+- **`client`** — `httpx.AsyncClient` against the FastAPI app via `ASGITransport` (function-scoped in root conftest; **module-scoped** under `integration/api/`)
 
-Integration tests use an autouse fixture in [`tests/integration/conftest.py`](../tests/integration/conftest.py) that **truncates** `users` and `todos` before each test so cases stay isolated.
+Integration tests use an autouse fixture in [`tests/integration/conftest.py`](../tests/integration/conftest.py) that **deletes** rows from `users` and `todos` before each test so cases stay isolated (with `synchronous_commit=off` on the reset connection for speed).
+
+API integration setup uses **repo-based user factories** in [`tests/integration/api/helpers.py`](../tests/integration/api/helpers.py) (`create_user_in_db`, `register_and_login`) so tests hit the route under test without repeating `POST /users` signup; dedicated tests still cover signup/login HTTP. Tests override `get_password_hasher` with [`FastPasswordHasher`](../tests/fakes/fast_password_hasher.py) (low-cost Argon2). The HTTP client fixture in [`tests/integration/api/conftest.py`](../tests/integration/api/conftest.py) is **module-scoped** to reuse `AsyncClient` per API test module.
 
 **Environment for tests:** set before importing `todos_app` (see root conftest):
 
-- `JWT_SECRET_KEY` — required for JWT issuance in API tests
-- `DATABASE_URL` / `TEST_DATABASE_URL` — PostgreSQL test database (CI sets `TEST_DATABASE_URL` explicitly; local default uses `POSTGRES_PORT` from `config/ports.env`)
+- `ENV_PROFILE=test` — loads [`src/env_config/profiles/test.py`](../src/env_config/profiles/test.py) (`DATABASE_URL`, `JWT_SECRET_KEY`, Valkey URL, etc.)
+
+**Test PostgreSQL bootstrap:** [`scripts/quality/tests.sh`](../scripts/quality/tests.sh) sets `ENV_PROFILE=test`, recreates the infra container when credentials do not match the test profile, creates `todos_test`, and stops the container afterward only when the script started it.
 
 Tests do **not** use Compose volumes or a host dev database.
 
@@ -541,6 +585,18 @@ pip install -e ".[dev]"
 Coverage (optional) uses `pytest-cov`; HTML report under `htmlcov/`. The project enforces **90%** line coverage on `todos_app` (`fail_under` in `pyproject.toml`; seeding modules omitted).
 
 Prefer **unit tests** for application orchestration and domain rules; **integration tests** for SQLAlchemy adapters and HTTP contracts. Keep routers thin and avoid asserting the same behavior in both layers unless the boundary differs (for example mapper unit tests plus one happy-path route test).
+
+### GWT naming
+
+Unit and integration tests under `tests/` use **Given–When–Then** naming and body structure:
+
+- **Function name:** `test_given_{precondition}_when_{action}_then_{expected_outcome}` (snake_case, all three clauses).
+- **Body sections:** `# given` (arrange), `# when` (single action under test), `# then` (assertions). Every test includes all three comment blocks.
+- **One behavior per test** — split multi-step flows (for example separate create, list, and get route tests) instead of one long CRUD test.
+- **Parametrized tests:** one GWT function name; `@pytest.mark.parametrize` varies the scenario; optional `ids=` for readable node IDs.
+- **Exception tests:** the failing call lives in `# when` inside `pytest.raises(...)`; `# then` holds any follow-up asserts.
+
+Serial pytest benchmark snapshot (post-optimization timings, xdist evaluation): [test-benchmark.md](test-benchmark.md).
 
 ### Local database reset
 

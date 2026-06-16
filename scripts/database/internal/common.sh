@@ -3,24 +3,10 @@
 # Source from bash after PROJECT_ROOT is set.
 
 load_database_url() {
-	local url_override="${DATABASE_URL:-}"
-	local valkey_override="${VALKEY_URL:-}"
 	local internal_dir="${DATABASE_SCRIPTS_DIR}/../../internal"
 	# shellcheck source=scripts/internal/load_env.sh
 	source "${internal_dir}/load_env.sh"
-	# shellcheck source=scripts/internal/env_urls.sh
-	source "${internal_dir}/env_urls.sh"
 	env_load_stack
-	if [[ -z "$url_override" ]]; then
-		env_resolve_database_url
-	else
-		export DATABASE_URL="$url_override"
-	fi
-	if [[ -z "$valkey_override" ]]; then
-		env_resolve_valkey_url
-	else
-		export VALKEY_URL="$valkey_override"
-	fi
 }
 
 database_clear_settings_cache() {
@@ -29,7 +15,7 @@ database_clear_settings_cache() {
 	fi
 	# shellcheck disable=SC1091
 	source ".venv/bin/activate"
-	PYTHONPATH=src python -c "from todos_app.core.settings import get_settings; get_settings.cache_clear()"
+	PYTHONPATH=src python -c "from env_config.loader import clear_env_settings_cache; clear_env_settings_cache()"
 }
 
 database_url_uses_postgres() {

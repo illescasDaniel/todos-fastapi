@@ -3,9 +3,8 @@
 
 verify_run_compose() {
 	local scenario_name="$1"
-	local database_url="$2"
-	local skip_http="${3:-false}"
-	local keep_stack="${4:-false}"
+	local skip_http="${2:-false}"
+	local keep_stack="${3:-false}"
 
 	local start_ts end_ts elapsed
 	local http_result="-"
@@ -14,12 +13,19 @@ verify_run_compose() {
 	echo ""
 	echo "=== ${scenario_name} ==="
 
-	export DATABASE_URL="$database_url"
-	verify_apply_defaults
+	verify_load_local_profile
 	cd "$PROJECT_ROOT" || return
 
 	"$PROJECT_ROOT/scripts/database/wipe.sh" --yes
-	"$PROJECT_ROOT/scripts/container/up.sh"
+	if ! "$PROJECT_ROOT/scripts/container/up.sh"; then
+		end_ts=$(date +%s)
+		elapsed=$((end_ts - start_ts))
+		verify_record_result "$scenario_name" "-" "fail" "$elapsed"
+		if [[ "$keep_stack" != "true" ]]; then
+			"$PROJECT_ROOT/scripts/container/down.sh" --remove || true
+		fi
+		return 1
+	fi
 	"$PROJECT_ROOT/scripts/database/seed.sh"
 
 	if [[ "$skip_http" != "true" ]]; then

@@ -13,33 +13,60 @@ from todos_app.core.http_errors import DATABASE_CONSTRAINT_VIOLATION, DUPLICATE_
 pytestmark = pytest.mark.unit
 
 
-def test_is_duplicate_user_violation_detects_email_constraint() -> None:
+def test_given_email_unique_violation_when_checking_duplicate_user_then_returns_true() -> None:
+	# given
 	exc = IntegrityError("", {}, Exception("UNIQUE constraint failed: users.email"))
-	assert is_duplicate_user_violation(exc) is True
+
+	# when
+	result = is_duplicate_user_violation(exc)
+
+	# then
+	assert result is True
 
 
-def test_is_duplicate_user_violation_detects_username_constraint() -> None:
+def test_given_username_unique_violation_when_checking_duplicate_user_then_returns_true() -> None:
+	# given
 	exc = IntegrityError("", {}, Exception("UNIQUE constraint failed: users.username"))
-	assert is_duplicate_user_violation(exc) is True
+
+	# when
+	result = is_duplicate_user_violation(exc)
+
+	# then
+	assert result is True
 
 
-def test_is_duplicate_user_violation_returns_false_for_other_constraints() -> None:
+def test_given_foreign_key_violation_when_checking_duplicate_user_then_returns_false() -> None:
+	# given
 	exc = IntegrityError("", {}, Exception("FOREIGN KEY constraint failed"))
-	assert is_duplicate_user_violation(exc) is False
+
+	# when
+	result = is_duplicate_user_violation(exc)
+
+	# then
+	assert result is False
 
 
-def test_database_validation_error_detail_omits_cause_when_disabled() -> None:
+def test_given_cause_disabled_when_building_validation_detail_then_omits_context() -> None:
+	# given
+	cause = "UNIQUE constraint failed: users.email"
+
+	# when
 	detail = database_validation_error_detail(
 		msg=DUPLICATE_USER,
 		error_type="database_integrity_error",
-		cause="UNIQUE constraint failed: users.email",
+		cause=cause,
 		include_cause=False,
 	)
+
+	# then
 	assert "ctx" not in detail[0]
 
 
-def test_database_http_exception_includes_cause_when_enabled() -> None:
+def test_given_cause_enabled_when_building_database_http_exception_then_includes_cause() -> None:
+	# given
 	exc = IntegrityError("", {}, Exception("UNIQUE constraint failed: users.email"))
+
+	# when
 	http_exc = database_http_exception(
 		status_code=409,
 		msg=DATABASE_CONSTRAINT_VIOLATION,
@@ -47,6 +74,8 @@ def test_database_http_exception_includes_cause_when_enabled() -> None:
 		exc=exc,
 		include_cause=True,
 	)
+
+	# then
 	detail = http_exc.detail
 	assert isinstance(detail, list)
 	parsed = ValidationErrorDetail.model_validate(detail[0])

@@ -49,7 +49,7 @@ def assert_seed_allowed() -> None:
 			"Seeding is only permitted in local development (APP_ENV=local)."
 		)
 
-	database_url = settings.database_url
+	database_url = settings.postgres.url
 	if database_url_is_local_only(database_url):
 		return
 
@@ -70,7 +70,7 @@ def assert_seed_allowed() -> None:
 
 async def reset_and_seed_defaults_async() -> None:
 	assert_seed_allowed()
-	database_url = get_settings().database_url
+	database_url = get_settings().postgres.url
 	seed_engine = create_engine_for_url(database_url)
 	try:
 		await _reset_database(seed_engine)

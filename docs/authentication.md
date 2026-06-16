@@ -2,7 +2,7 @@
 
 Protected routes require an `Authorization: Bearer <access_token>` header. Obtain a token with `POST /auth/login` (username and password in the JSON body).
 
-**Local setup:** copy [`.env.example`](../.env.example) to `.env` and set `JWT_SECRET_KEY` to a long random string (for example `python -c "import secrets; print(secrets.token_urlsafe(64))"`). The server reads JWT settings from environment variables and `.env` at startup. See [Configuration and secrets](architecture.md#configuration-and-secrets) in the architecture guide for all JWT-related variables.
+**Local setup:** copy [`src/env_config/profiles/example.py`](../src/env_config/profiles/example.py) to `src/env_config/profiles/local.py`, set `jwt_secret_key` to a long random string (for example `python -c "import secrets; print(secrets.token_urlsafe(64))"`), and `export ENV_PROFILE=local`. See [Configuration and secrets](architecture.md#configuration-and-secrets).
 
 After [seeding](database.md#seeding), sample credentials are `jane` / `changeme` (regular user) and `admin` / `changeme` (admin). [api.http](api.http) shows login requests and authenticated calls.
 

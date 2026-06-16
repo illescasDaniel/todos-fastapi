@@ -29,9 +29,40 @@ async def _create_user(db_session: AsyncSession, *, username: str) -> User:
 	return user
 
 
-async def test_add_and_get_by_id_persists_null_optional_fields(db_session: AsyncSession) -> None:
+async def _create_todo(
+	db_session: AsyncSession,
+	*,
+	owner: User,
+	title: str,
+	description: str | None = None,
+	priority: str | None = "low",
+) -> Todo:
+	assert owner.id is not None
+	repo = SqlAlchemyTodoRepository(db_session)
+	created = await repo.add(
+		Todo(
+			id=None,
+			title=title,
+			description=description,
+			priority=priority,
+			completed=False,
+			owner_id=owner.id,
+		)
+	)
+	await db_session.commit()
+	assert created.id is not None
+	return created
+
+
+async def test_given_null_optional_fields_when_adding_todo_then_persists(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner = await _create_user(db_session, username="owner-null-fields")
 	repo = SqlAlchemyTodoRepository(db_session)
+	assert owner.id is not None
+
+	# when
 	created = await repo.add(
 		Todo(
 			id=None,
@@ -39,47 +70,49 @@ async def test_add_and_get_by_id_persists_null_optional_fields(db_session: Async
 			description=None,
 			priority=None,
 			completed=False,
-			owner_id=owner.id,  # type: ignore[arg-type]
+			owner_id=owner.id,
 		)
 	)
 	await db_session.commit()
 
+	# then
 	assert created.id is not None
-	fetched = await repo.get_by_id(created.id)
-	assert fetched is not None
-	assert fetched.title == "Title only"
-	assert fetched.description is None
-	assert fetched.priority is None
+	assert created.title == "Title only"
+	assert created.description is None
+	assert created.priority is None
 
 
-async def test_add_and_get_by_id(db_session: AsyncSession) -> None:
+async def test_given_persisted_todo_when_getting_by_id_then_returns_todo(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner = await _create_user(db_session, username="owner-a")
-	repo = SqlAlchemyTodoRepository(db_session)
-	created = await repo.add(
-		Todo(
-			id=None,
-			title="Persisted",
-			description="desc",
-			priority="low",
-			completed=False,
-			owner_id=owner.id,  # type: ignore[arg-type]
-		)
+	created = await _create_todo(
+		db_session,
+		owner=owner,
+		title="Persisted",
+		description="desc",
 	)
-	await db_session.commit()
-
+	repo = SqlAlchemyTodoRepository(db_session)
 	assert created.id is not None
+
+	# when
 	fetched = await repo.get_by_id(created.id)
+
+	# then
 	assert fetched is not None
 	assert fetched.title == "Persisted"
 	assert fetched.owner_id == owner.id
 
 
-async def test_list_page_cursor_and_owner_filter(db_session: AsyncSession) -> None:
+async def test_given_todos_for_multiple_owners_when_listing_with_owner_filter_then_returns_owner_items(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner_a = await _create_user(db_session, username="owner-b")
 	owner_b = await _create_user(db_session, username="owner-c")
 	assert owner_a.id is not None
 	assert owner_b.id is not None
-
 	repo = SqlAlchemyTodoRepository(db_session)
 	for owner_id, title in ((owner_a.id, "A"), (owner_a.id, "B"), (owner_b.id, "C")):
 		await repo.add(
@@ -94,61 +127,91 @@ async def test_list_page_cursor_and_owner_filter(db_session: AsyncSession) -> No
 		)
 	await db_session.commit()
 
+	# when
 	user_page = await repo.list_page(None, 10, owner_id=owner_a.id)
+
+	# then
 	assert [t.title for t in user_page.items] == ["A", "B"]
 
+
+async def test_given_multiple_todos_when_listing_with_cursor_pagination_then_returns_pages(
+	db_session: AsyncSession,
+) -> None:
+	# given
+	owner_a = await _create_user(db_session, username="owner-cursor-a")
+	owner_b = await _create_user(db_session, username="owner-cursor-b")
+	assert owner_a.id is not None
+	assert owner_b.id is not None
+	repo = SqlAlchemyTodoRepository(db_session)
+	for owner_id, title in ((owner_a.id, "A"), (owner_a.id, "B"), (owner_b.id, "C")):
+		await repo.add(
+			Todo(
+				id=None,
+				title=title,
+				description=None,
+				priority="low",
+				completed=False,
+				owner_id=owner_id,
+			)
+		)
+	await db_session.commit()
+
+	# when
 	first_page = await repo.list_page(None, 1, owner_id=None)
+	second_page = await repo.list_page(first_page.next_last_id, 10, owner_id=None)
+
+	# then
 	assert len(first_page.items) == 1
 	assert first_page.next_last_id is not None
-
-	second_page = await repo.list_page(first_page.next_last_id, 10, owner_id=None)
 	assert len(second_page.items) == 2
 
 
-async def test_get_by_id_respects_owner_filter(db_session: AsyncSession) -> None:
+async def test_given_todo_owned_by_user_a_when_getting_with_owner_a_filter_then_returns_todo(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner_a = await _create_user(db_session, username="owner-d")
-	owner_b = await _create_user(db_session, username="owner-e")
-	assert owner_a.id is not None
-	assert owner_b.id is not None
-
+	created = await _create_todo(db_session, owner=owner_a, title="Owned")
 	repo = SqlAlchemyTodoRepository(db_session)
-	created = await repo.add(
-		Todo(
-			id=None,
-			title="Owned",
-			description=None,
-			priority="low",
-			completed=False,
-			owner_id=owner_a.id,
-		)
-	)
-	await db_session.commit()
+	assert owner_a.id is not None
 	assert created.id is not None
 
-	assert await repo.get_by_id(created.id, owner_id=owner_a.id) is not None
-	assert await repo.get_by_id(created.id, owner_id=owner_b.id) is None
+	# when
+	result = await repo.get_by_id(created.id, owner_id=owner_a.id)
+
+	# then
+	assert result is not None
 
 
-async def test_update_with_and_without_owner_filter(db_session: AsyncSession) -> None:
+async def test_given_todo_owned_by_user_a_when_getting_with_owner_b_filter_then_returns_none(
+	db_session: AsyncSession,
+) -> None:
+	# given
+	owner_a = await _create_user(db_session, username="owner-e2")
+	owner_b = await _create_user(db_session, username="owner-e3")
+	created = await _create_todo(db_session, owner=owner_a, title="Owned-other")
+	repo = SqlAlchemyTodoRepository(db_session)
+	assert owner_b.id is not None
+	assert created.id is not None
+
+	# when
+	result = await repo.get_by_id(created.id, owner_id=owner_b.id)
+
+	# then
+	assert result is None
+
+
+async def test_given_todo_owned_by_user_a_when_updating_with_owner_a_filter_then_persists(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner_a = await _create_user(db_session, username="owner-f")
-	owner_b = await _create_user(db_session, username="owner-g")
-	assert owner_a.id is not None
-	assert owner_b.id is not None
-
+	created = await _create_todo(db_session, owner=owner_a, title="Original")
 	repo = SqlAlchemyTodoRepository(db_session)
-	created = await repo.add(
-		Todo(
-			id=None,
-			title="Original",
-			description=None,
-			priority="low",
-			completed=False,
-			owner_id=owner_a.id,
-		)
-	)
-	await db_session.commit()
+	assert owner_a.id is not None
 	assert created.id is not None
 
+	# when
 	updated = await repo.update(
 		Todo(
 			id=created.id,
@@ -161,9 +224,25 @@ async def test_update_with_and_without_owner_filter(db_session: AsyncSession) ->
 		owner_id=owner_a.id,
 	)
 	await db_session.commit()
+
+	# then
 	assert updated is not None
 	assert updated.title == "Updated"
 
+
+async def test_given_todo_owned_by_user_a_when_updating_with_owner_b_filter_then_returns_none(
+	db_session: AsyncSession,
+) -> None:
+	# given
+	owner_a = await _create_user(db_session, username="owner-g")
+	owner_b = await _create_user(db_session, username="owner-g2")
+	created = await _create_todo(db_session, owner=owner_a, title="Blocked-update")
+	repo = SqlAlchemyTodoRepository(db_session)
+	assert owner_a.id is not None
+	assert owner_b.id is not None
+	assert created.id is not None
+
+	# when
 	mismatch = await repo.update(
 		Todo(
 			id=created.id,
@@ -175,32 +254,44 @@ async def test_update_with_and_without_owner_filter(db_session: AsyncSession) ->
 		),
 		owner_id=owner_b.id,
 	)
+
+	# then
 	assert mismatch is None
 
 
-async def test_delete_with_and_without_owner_filter(db_session: AsyncSession) -> None:
+async def test_given_todo_owned_by_user_a_when_deleting_with_owner_b_filter_then_returns_false(
+	db_session: AsyncSession,
+) -> None:
+	# given
 	owner_a = await _create_user(db_session, username="owner-h")
 	owner_b = await _create_user(db_session, username="owner-i")
-	assert owner_a.id is not None
-	assert owner_b.id is not None
-
+	created = await _create_todo(db_session, owner=owner_a, title="Delete me")
 	repo = SqlAlchemyTodoRepository(db_session)
-	created = await repo.add(
-		Todo(
-			id=None,
-			title="Delete me",
-			description=None,
-			priority="low",
-			completed=False,
-			owner_id=owner_a.id,
-		)
-	)
-	await db_session.commit()
+	assert owner_b.id is not None
 	assert created.id is not None
 
-	assert await repo.delete(created.id, owner_id=owner_b.id) is False
+	# when
+	deleted = await repo.delete(created.id, owner_id=owner_b.id)
+
+	# then
+	assert deleted is False
 	assert await repo.get_by_id(created.id) is not None
 
-	assert await repo.delete(created.id, owner_id=owner_a.id) is True
+
+async def test_given_todo_owned_by_user_a_when_deleting_with_owner_a_filter_then_removes_todo(
+	db_session: AsyncSession,
+) -> None:
+	# given
+	owner_a = await _create_user(db_session, username="owner-h2")
+	created = await _create_todo(db_session, owner=owner_a, title="Delete me for real")
+	repo = SqlAlchemyTodoRepository(db_session)
+	assert owner_a.id is not None
+	assert created.id is not None
+
+	# when
+	deleted = await repo.delete(created.id, owner_id=owner_a.id)
 	await db_session.commit()
+
+	# then
+	assert deleted is True
 	assert await repo.get_by_id(created.id) is None

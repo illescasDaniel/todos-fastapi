@@ -1,17 +1,20 @@
 import json
-import os
 
 import httpx
 import pytest
 
 from todos_mcp.client import ApiClient
-from todos_mcp.config import Settings
+from todos_mcp.config import load_settings
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_live_health() -> None:
-	base_url = os.environ.get("TODOS_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+async def test_live_health(monkeypatch: pytest.MonkeyPatch) -> None:
+	repo_root = __import__("pathlib").Path(__file__).resolve().parents[3]
+	monkeypatch.setenv("ENV_PROFILE", "test")
+	monkeypatch.setenv("TODOS_REPO_ROOT", str(repo_root))
+	settings = load_settings()
+	base_url = settings.api_base_url
 	try:
 		async with httpx.AsyncClient(timeout=2.0) as client:
 			response = await client.get(f"{base_url}/health")
@@ -21,7 +24,6 @@ async def test_live_health() -> None:
 	if response.status_code != 200:
 		pytest.skip("API not healthy")
 
-	settings = Settings(api_base_url=base_url, repo_root=__import__("pathlib").Path("/tmp"))
 	api = ApiClient(settings)
 	result = json.loads(await api.request("GET", "/health"))
 	assert result["ok"] is True

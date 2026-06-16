@@ -16,8 +16,8 @@ Usage: $0
 
 Deploy the app container only (Path C — staging/production).
 
-Uses docker-compose.app.base.yml with external DATABASE_URL and VALKEY_URL from .env.
-Copy .env.production.example to .env before first deploy (see docs/deployment.md).
+Uses docker-compose.app.base.yml with external DATABASE_URL and VALKEY_URL from the env profile.
+Set ENV_PROFILE to your production profile (e.g. production) before running — see docs/deployment.md.
 Does not start bundled PostgreSQL or Valkey (see ./scripts/container/up.sh for local full stack).
 
 Requires:
@@ -25,7 +25,7 @@ Requires:
   External DATABASE_URL and VALKEY_URL (not 127.0.0.1)
   Strong JWT_SECRET_KEY (min 32 characters)
 
-Migrations run on container start when RUN_MIGRATIONS=true (default).
+Migrations run on container start when RUN_MIGRATIONS=true in the env profile.
 EOF
 }
 

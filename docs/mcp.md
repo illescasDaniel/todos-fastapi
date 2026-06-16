@@ -9,7 +9,7 @@ Package path: [`mcp/todos-backend/`](../mcp/todos-backend/).
 ## What it is
 
 ```text
-Cursor agent  →  MCP tools (stdio)  →  httpx  →  FastAPI (`API_HOST:API_PORT` from `config/ports.env`)
+Cursor agent  →  MCP tools (stdio)  →  httpx  →  FastAPI (`todos_api_base_url` from env profile)
                               ↘  subprocess  →  ./scripts/*.sh
 ```
 
@@ -55,9 +55,9 @@ pip install -e ".[dev]"
 
 Prerequisites for the **API** and lifecycle tools (unchanged from normal dev):
 
-- Repo root [`.env`](../.env) with secrets (`JWT_SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `VALKEY_PASSWORD`); ports in [`config/ports.env`](../config/ports.env)
+- [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py) with secrets (`ENV_PROFILE=local` in [`.cursor/mcp.json`](../.cursor/mcp.json) or shell)
 - **Podman** (or Docker) for compose lifecycle tools
-- API reachable at `http://127.0.0.1:${API_PORT}` (`API_PORT` from `config/ports.env`) when using API tools
+- API reachable at `http://127.0.0.1:${API_PORT}` (`api_port` in env profile) when using API tools
 
 ## Test in Cursor
 
@@ -162,31 +162,29 @@ Responses are JSON strings: `{"ok": true, "status": 200, "data": ...}` on succes
 
 ## Configuration
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `TODOS_API_BASE_URL` | Built from `API_HOST` + `API_PORT` (from `config/ports.env`) when unset | API base URL (no trailing slash) |
-| `API_HOST` / `API_PORT` | From `config/ports.env` (via repo env load) | Used when `TODOS_API_BASE_URL` is unset |
-| `TODOS_REPO_ROOT` | Auto-detected from package path | Working directory for lifecycle scripts; omit in `.cursor/mcp.json` unless auto-detect fails |
-| `MCP_ALLOW_DESTRUCTIVE` | _(unset — disabled)_ | Set to `true` in repo `.env` (loaded at MCP startup) or in `.cursor/mcp.json` `env` to enable destructive lifecycle tools (`db_wipe`, `db_seed`, `stack_compose_down --remove`) |
-| `MCP_ALLOW_REMOTE_API` | _(unset — loopback only)_ | Set to `true` to allow `TODOS_API_BASE_URL` to point at non-loopback hosts (disables SSRF guard) |
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `todos_api_base_url` | From env profile | API base URL (no trailing slash) |
+| `ENV_PROFILE` | Yes (`local` in `.cursor/mcp.json`) | Loads [`src/env_config/profiles/<name>.py`](../src/env_config/) — any valid profile module name |
+| `TODOS_REPO_ROOT` | Yes (e.g. `${workspaceFolder}` in `.cursor/mcp.json`) | Working directory for lifecycle scripts |
+| `mcp_allow_destructive` | From env profile | Set `true` in `local.py` to enable destructive lifecycle tools |
+| `mcp_allow_remote_api` | From env profile | Set `true` to allow non-loopback API targets |
 
-Set in `.cursor/mcp.json` under `env`, or in the shell when running manually. The committed config omits `TODOS_REPO_ROOT` because auto-detect works when the MCP package is installed from `mcp/todos-backend/`.
+Set in `.cursor/mcp.json` under `env`, or in the shell when running manually.
 
 ### Security defaults
 
-- **Destructive tools are off by default.** `db_wipe`, `db_seed`, and `stack_compose_down --remove` return an error unless `MCP_ALLOW_DESTRUCTIVE=true` is set in repo `.env` or `.cursor/mcp.json` `env`. For local dev, set it in `.env` (the MCP server loads simple `KEY=value` lines from the repo root at startup). Do **not** commit `.env` or enable this in shared/CI environments.
-- **SSRF guard is on by default.** `TODOS_API_BASE_URL` is validated at startup; only loopback addresses (`127.0.0.1`, `localhost`, `::1`) are allowed unless `MCP_ALLOW_REMOTE_API=true`.
-- **Subprocesses inherit a minimal environment.** Only variables needed by the shell scripts are forwarded; secrets such as `JWT_SECRET_KEY` are not passed to child processes. Scripts load ports and secrets from `config/ports.env` and `.env` on disk.
+- **Destructive tools are off by default.** `db_wipe`, `db_seed`, and `stack_compose_down --remove` return an error unless `mcp_allow_destructive=true` in the active env profile. For local dev, set it in your local profile module (e.g. `local.py`). Do **not** enable in CI.
+- **SSRF guard is on by default.** `todos_api_base_url` is validated at startup; only loopback addresses are allowed unless `mcp_allow_remote_api=true`.
+- **Subprocesses inherit a minimal environment.** Only variables needed by shell scripts are forwarded; secrets are not passed to child processes. Scripts load config from env profiles on disk.
 - **Bearer token lifetime.** The session token is stored in process memory and cleared on shutdown via `atexit`. When passing `access_token` explicitly in tool arguments, note that the value appears in agent call logs — prefer `auth_login` once and let the session store handle it.
 
 ## OpenAPI snapshot
 
-[`mcp/todos-backend/openapi.snapshot.json`](../mcp/todos-backend/openapi.snapshot.json) is a committed reference for the HTTP surface. Refresh when routes change:
+[`.cursor/openapi.snapshot.json`](../.cursor/openapi.snapshot.json) is a **gitignored** local reference for the HTTP surface (agents can `@`-reference it). Generated from `todos_app.main:app` — no running server required.
 
-```bash
-# API running with APP_ENV=local:
-curl -s http://127.0.0.1:8000/openapi.json -o mcp/todos-backend/openapi.snapshot.json
-```
+- **Automatic:** local `./scripts/quality/checks.sh` regenerates it before MCP tests (skipped when `CI=true`).
+- **Manual:** `./scripts/mcp/export_openapi.sh`
 
 ## Tests
 
@@ -206,8 +204,8 @@ These tests are independent of the main repo coverage gate on `todos_app`.
 | MCP server not listed | Open repo root as workspace; confirm `mcp/todos-backend/.venv` exists and `pip install -e .` succeeded |
 | Tools fail with connection errors | Start API (`./scripts/start.sh` or `stack_compose_up`); run `stack_health` |
 | `401` on protected tools | Run `auth_login` first, or pass `access_token` |
-| Lifecycle tools fail | Repo root auto-detect or `TODOS_REPO_ROOT` correct; Podman installed; `.env` present |
-| `db_seed` fails | `APP_ENV=local` in repo `.env` |
+| Lifecycle tools fail | Repo root auto-detect or `TODOS_REPO_ROOT` correct; Podman installed; `src/env_config/profiles/local.py` present |
+| `db_seed` fails | `app_env=local` in env profile (`ENV_PROFILE=local`) |
 
 ## Limitations
 

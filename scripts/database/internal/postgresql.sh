@@ -8,6 +8,36 @@ _postgres_container_running() {
 	podman container inspect "$POSTGRES_CONTAINER_NAME" --format '{{.State.Status}}' 2>/dev/null | grep -qx running
 }
 
+_postgres_auth_ok() {
+	local host="${1:-127.0.0.1}"
+	local port="${2:-${POSTGRES_PORT:?set POSTGRES_PORT in env profile}}"
+	local user="${3:-${POSTGRES_USER:?set POSTGRES_USER in env profile}}"
+	local password="${4:-${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}}"
+	if [[ -z "${password}" ]]; then
+		return 1
+	fi
+	"${PROJECT_ROOT}/.venv/bin/python" -c "
+import asyncio
+import asyncpg
+import sys
+
+async def main() -> None:
+	try:
+		conn = await asyncpg.connect(
+			host='${host}',
+			port=${port},
+			user='${user}',
+			password='${password}',
+			database='postgres',
+		)
+		await conn.close()
+	except Exception:
+		sys.exit(1)
+
+asyncio.run(main())
+" 2>/dev/null
+}
+
 _postgres_wait_for_ready() {
 	local retries=30
 	echo "Waiting for PostgreSQL to accept connections..."
@@ -30,7 +60,12 @@ postgres_prepare_for_start() {
 	source "$DATABASE_SCRIPTS_DIR/infra_compose.sh"
 
 	if _postgres_container_running; then
-		echo "PostgreSQL container already running."
+		if _postgres_auth_ok; then
+			echo "PostgreSQL container already running."
+			return 0
+		fi
+		echo "PostgreSQL credentials do not match env profile; recreating container..."
+		postgres_reset_container
 		return 0
 	fi
 
@@ -40,6 +75,10 @@ postgres_prepare_for_start() {
 		infra_compose up -d postgres
 	)
 	_postgres_wait_for_ready
+	if ! _postgres_auth_ok; then
+		echo "PostgreSQL volume credentials do not match env profile; recreating container..."
+		postgres_reset_container
+	fi
 }
 
 postgres_reset_container() {

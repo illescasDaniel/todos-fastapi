@@ -37,18 +37,18 @@ def get_user_repository(db: DbSessionDep) -> UserRepository:
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
 
 
-def get_password_hasher() -> PasswordHasher:
-	return Argon2PasswordHasher()
-
-
-PasswordHasherDep = Annotated[PasswordHasher, Depends(get_password_hasher)]
-
-
 def get_settings_dep() -> Settings:
 	return get_settings()
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
+
+
+def get_password_hasher(settings: SettingsDep) -> PasswordHasher:
+	return Argon2PasswordHasher(settings)
+
+
+PasswordHasherDep = Annotated[PasswordHasher, Depends(get_password_hasher)]
 
 
 def get_access_token_issuer(settings: SettingsDep) -> AccessTokenIssuer:
@@ -66,7 +66,7 @@ AccessTokenVerifierDep = Annotated[AccessTokenVerifier, Depends(get_access_token
 
 
 def get_user_auth_cache(settings: SettingsDep) -> UserAuthCache:
-	return ValkeyUserAuthCache(create_valkey_client(settings.valkey_url))
+	return ValkeyUserAuthCache(create_valkey_client(settings.valkey.url))
 
 
 UserAuthCacheDep = Annotated[UserAuthCache, Depends(get_user_auth_cache)]

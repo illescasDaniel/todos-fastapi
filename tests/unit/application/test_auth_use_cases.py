@@ -41,40 +41,68 @@ def repo() -> FakeUserRepository:
 	)
 
 
-async def test_authenticate_returns_access_token(repo: FakeUserRepository) -> None:
+async def test_given_valid_credentials_when_authenticating_then_returns_access_token(
+	repo: FakeUserRepository,
+) -> None:
+	# given
+	hasher = FakePasswordHasher()
+	issuer = FakeAccessTokenIssuer()
+
+	# when
 	token = await auth_use_cases.authenticate(
 		repo=repo,
-		hasher=FakePasswordHasher(),
-		issuer=FakeAccessTokenIssuer(),
+		hasher=hasher,
+		issuer=issuer,
 		username="jane",
 		password="changeme",
 	)
+
+	# then
 	assert token == f"token:{TEST_USER_ID}:jane:user:0"
 
 
-async def test_authenticate_raises_for_unknown_username(repo: FakeUserRepository) -> None:
+async def test_given_unknown_username_when_authenticating_then_raises_invalid_credentials(
+	repo: FakeUserRepository,
+) -> None:
+	# given
+	hasher = FakePasswordHasher()
+	issuer = FakeAccessTokenIssuer()
+
+	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
 			repo=repo,
-			hasher=FakePasswordHasher(),
-			issuer=FakeAccessTokenIssuer(),
+			hasher=hasher,
+			issuer=issuer,
 			username="missing",
 			password="changeme",
 		)
 
+	# then
 
-async def test_authenticate_raises_for_wrong_password(repo: FakeUserRepository) -> None:
+
+async def test_given_wrong_password_when_authenticating_then_raises_invalid_credentials(
+	repo: FakeUserRepository,
+) -> None:
+	# given
+	hasher = FakePasswordHasher()
+	issuer = FakeAccessTokenIssuer()
+
+	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
 			repo=repo,
-			hasher=FakePasswordHasher(),
-			issuer=FakeAccessTokenIssuer(),
+			hasher=hasher,
+			issuer=issuer,
 			username="jane",
 			password="wrong",
 		)
 
+	# then
 
-async def test_authenticate_raises_for_inactive_user(repo: FakeUserRepository) -> None:
+
+async def test_given_inactive_user_when_authenticating_then_raises_invalid_credentials() -> None:
+	# given
 	inactive = User(
 		id=TEST_USER_ID,
 		email="jane@example.com",
@@ -86,11 +114,17 @@ async def test_authenticate_raises_for_inactive_user(repo: FakeUserRepository) -
 		role="user",
 	)
 	repo = FakeUserRepository([inactive])
+	hasher = FakePasswordHasher()
+	issuer = FakeAccessTokenIssuer()
+
+	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
 			repo=repo,
-			hasher=FakePasswordHasher(),
-			issuer=FakeAccessTokenIssuer(),
+			hasher=hasher,
+			issuer=issuer,
 			username="jane",
 			password="changeme",
 		)
+
+	# then

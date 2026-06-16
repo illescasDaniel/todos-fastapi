@@ -32,8 +32,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # pyright: ignore[reportArgumentType]
 app.add_middleware(SlowAPIMiddleware)
 
-# M4: reject requests with Content-Length exceeding 1 MB
-_MAX_BODY_SIZE = 1_048_576
+_MAX_BODY_SIZE = settings.api.body_max_bytes
 
 
 @app.middleware("http")

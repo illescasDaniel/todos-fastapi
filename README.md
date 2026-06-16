@@ -17,7 +17,7 @@ Built with FastAPI, Pydantic validation, async SQLAlchemy persistence via [async
 - **Valkey** — authenticated-user cache (required at runtime)
 - **JWT + Argon2** — login and password hashing
 - **Alembic** — schema migrations
-- **pytest** — 174 tests, **90%** line coverage gate on `todos_app`
+- **pytest** — 194 tests, **90%** line coverage gate on `todos_app`
 - **Podman Compose or Docker Compose** — local Valkey + PostgreSQL (scripts accept either `podman compose` or `docker compose`)
 
 > **Security — demo only**
@@ -48,15 +48,17 @@ From the project root (see [Getting started](docs/getting-started.md) for full d
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # set JWT_SECRET_KEY, POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB, VALKEY_PASSWORD
+cp src/env_config/profiles/example.py src/env_config/profiles/local.py
+# edit secrets in local.py (JWT, POSTGRES_PASSWORD, VALKEY_PASSWORD, URLs)
+export ENV_PROFILE=local
 ./scripts/database/migrate.sh     # ensure infra, apply Alembic migrations
 ./scripts/database/seed.sh        # optional — demo users jane/admin, password changeme
 ./scripts/start.sh       # host API with hot reload
 ```
 
-Host `.env` uses `127.0.0.1` for PostgreSQL and Valkey. `./scripts/database/wipe.sh` removes containers and volumes for a full reset; `./scripts/database/migrate.sh` and `./scripts/database/seed.sh` work the same for host-app and full-stack paths.
+Host env profile uses `127.0.0.1` for PostgreSQL and Valkey. Scripts generate a gitignored root `.env` for Compose from the profile. `./scripts/database/wipe.sh` removes containers and volumes for a full reset; `./scripts/database/migrate.sh` and `./scripts/database/seed.sh` work the same for host-app and full-stack paths.
 
-> **OpenAPI UI** — after `./scripts/start.sh`, open `http://127.0.0.1:${API_PORT}/docs` (`API_PORT` from [`config/ports.env`](config/ports.env)). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
+> **OpenAPI UI** — after `./scripts/start.sh`, open `http://127.0.0.1:8000/docs` (or your `api_port` in `profiles/local.py`). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
 
 ### Cursor MCP (agent tools)
 
@@ -73,14 +75,16 @@ The MCP uses its **own** `.venv` in `mcp/todos-backend/` (not global Python, not
 Same infra plus an app container via [`docker-compose.app.base.yml`](docker-compose.app.base.yml) + [`docker-compose.app.with-infra.yml`](docker-compose.app.with-infra.yml):
 
 ```bash
-cp .env.example .env   # set JWT_SECRET_KEY, POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB, VALKEY_PASSWORD
+cp src/env_config/profiles/example.py src/env_config/profiles/local.py
+# edit secrets in local.py (JWT, POSTGRES_PASSWORD, VALKEY_PASSWORD, URLs)
+export ENV_PROFILE=local
 ./scripts/container/up.sh
 ./scripts/database/seed.sh        # optional — demo data
 ```
 
 Path B rewrites loopback `DATABASE_URL` and `VALKEY_URL` to in-network service names inside the container. Host `.env` uses `127.0.0.1`.
 
-Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Path C): copy [`.env.production.example`](.env.production.example) to `.env`, then `deploy.sh` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
+Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Path C): copy [`production.example.py`](src/env_config/profiles/production.example.py) to `profiles/production.py`, set `ENV_PROFILE=production` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
 
 ## Quality checks (CI)
 
@@ -120,7 +124,7 @@ See [docs/architecture.md](docs/architecture.md) for the full layered layout, pa
 
 ```text
 todo/
-├── config/              # ports.env (committed port defaults)
+├── src/env_config/          # EnvSettings schema, loader, profiles (example/test/production.example)
 ├── docs/                # Guides, architecture reference, api.http samples
 ├── alembic/             # Alembic env.py and version scripts
 ├── scripts/             # start, database, container, quality, verify
@@ -133,8 +137,8 @@ todo/
 ├── docker-compose.app.base.yml        # App service (Path B base, Path C production)
 ├── docker-compose.app.with-infra.yml  # Path B overlay: depends_on bundled infra
 ├── Dockerfile           # Multi-stage OCI image (podman build)
-├── .env.example              # Local dev env template (Paths A and B)
-├── .env.production.example   # Staging/production env template (Path C)
+├── src/env_config/profiles/example.py   # Local dev template → copy to local.py (gitignored)
+├── src/env_config/profiles/production.example.py   # Production template (Path C)
 └── src/todos_app/       # Application package — see architecture.md
 ```
 

@@ -2,18 +2,37 @@
 
 This document describes the recommended approach for managing secrets in this project.
 
+## Env profiles
+
+Configuration lives in Python modules under [`src/env_config/profiles/`](../src/env_config/profiles/). Set `ENV_PROFILE` to the module name (without `.py`) before running scripts or starting the app:
+
+```bash
+export ENV_PROFILE=local    # loads profiles/local.py
+export ENV_PROFILE=local2   # loads profiles/local2.py (custom local stack)
+export ENV_PROFILE=test     # CI / pytest (committed)
+export ENV_PROFILE=production
+```
+
+Profile names must be lowercase identifiers (`local`, `local2`, `my_staging`). Invalid names (paths, dots, uppercase) are rejected. The template module `example` cannot be used as `ENV_PROFILE` — copy it to a new file first.
+
+Secret-bearing profile files are **gitignored** automatically; only `example.py`, `production.example.py`, and `test.py` are committed. See [Configuration and secrets](architecture.md#configuration-and-secrets).
+
 ## Local development
 
-For local development (Path A and B), secrets are stored in `.env` (copied from `.env.example`).
-Ports and bind addresses live in committed [`config/ports.env`](../config/ports.env) (override locally via gitignored `config/ports.local.env`).
-`.env` is listed in `.gitignore` and must never be committed.
+For local development (Path A and B), create a gitignored profile from [`example.py`](../src/env_config/profiles/example.py) (commonly `local.py`). Ports, bind addresses, and connection URLs are set in the same module. Use `app_env="local"` for local behavior (OpenAPI UI, seed allowed).
+
+For a **second local stack** (different ports/DB), copy the template to another name (e.g. `local2.py`) and `export ENV_PROFILE=local2`.
+
+Shell scripts load the active profile and export uppercase env vars. For Compose, they also write a generated root [`.env`](../.env) via `env_config.export --dotenv` — gitignored, not hand-edited.
+
+For production (Path C), secrets live in gitignored [`profiles/production.py`](../src/env_config/profiles/production.py) (copy from [`production.example.py`](../src/env_config/profiles/production.example.py)). Set `export ENV_PROFILE=production` before `./scripts/container/deploy.sh`.
 
 **Never pass raw secret values as `-e KEY=value` CLI arguments** when running containers manually.
 These values are visible to any process that can read `/proc/<pid>/cmdline` on the host.
 
 Instead, use one of:
 
-- `--env-file .env` (podman/docker) — loads the file without exposing values in the process list
+- `--env-file .env` (podman/docker) — generated from env profile; do not commit
 - The `env_file:` key in Compose files (already the default in `docker-compose.app.base.yml`)
 - Orchestrator-level injection (see Production below)
 
@@ -46,7 +65,7 @@ The following variables contain sensitive values and must not be logged, printed
 
 ## Compose env_file note
 
-`docker-compose.app.base.yml` uses `env_file: - .env` to load the entire environment file.
+`docker-compose.app.base.yml` uses `env_file: - .env` to load the generated environment file.
 This is convenient for local development but loads all variables including secrets into the
 container environment. For production deployments:
 

@@ -26,6 +26,10 @@ database_stop() {
 	# shellcheck source=scripts/database/internal/postgresql.sh
 	source "$DATABASE_SCRIPTS_DIR/postgresql.sh"
 	postgres_stop_container
+
+	# shellcheck source=scripts/database/internal/valkey.sh
+	source "$DATABASE_SCRIPTS_DIR/valkey.sh"
+	valkey_stop_container
 }
 
 database_stop_container() {

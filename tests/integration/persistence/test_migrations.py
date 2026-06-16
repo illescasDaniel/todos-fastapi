@@ -1,4 +1,3 @@
-import os
 from collections.abc import AsyncIterator
 
 import pytest
@@ -6,7 +5,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from todos_app.core.settings import get_settings
+from env_config.loader import clear_env_settings_cache, get_env_settings
 from todos_app.infrastructure.persistence.migrations import (
 	alembic_config,
 	downgrade_migrations_async,
@@ -16,24 +15,27 @@ from todos_app.infrastructure.persistence.migrations import (
 
 pytestmark = pytest.mark.integration
 
-_MIGRATION_TEST_URL = os.environ.get(
-	"TEST_DATABASE_URL",
-	"postgresql+asyncpg://todos:todos@127.0.0.1:5432/todos_test",
-)
+_MIGRATION_TEST_URL = get_env_settings().postgres.test_url
 
 
 @pytest.fixture
 async def migration_db_url(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[str]:
 	monkeypatch.setenv("DATABASE_URL", _MIGRATION_TEST_URL)
-	get_settings.cache_clear()
+	clear_env_settings_cache()
 	yield _MIGRATION_TEST_URL
-	get_settings.cache_clear()
+	clear_env_settings_cache()
 
 
-async def test_alembic_upgrade_head_applies_migrations(migration_db_url: str) -> None:
+async def test_given_empty_schema_when_upgrading_to_head_then_applies_migrations(
+	migration_db_url: str,
+) -> None:
+	# given
 	await downgrade_migrations_async("base")
+
+	# when
 	await run_migrations_async("head")
 
+	# then
 	engine = create_async_engine(migration_db_url)
 	try:
 		async with engine.connect() as conn:
@@ -50,10 +52,16 @@ async def test_alembic_upgrade_head_applies_migrations(migration_db_url: str) ->
 		await engine.dispose()
 
 
-async def test_alembic_downgrade_base_removes_schema(migration_db_url: str) -> None:
+async def test_given_migrated_schema_when_downgrading_to_base_then_removes_application_tables(
+	migration_db_url: str,
+) -> None:
+	# given
 	await run_migrations_async("head")
+
+	# when
 	await downgrade_migrations_async("base")
 
+	# then
 	engine = create_async_engine(migration_db_url)
 	try:
 		async with engine.connect() as conn:

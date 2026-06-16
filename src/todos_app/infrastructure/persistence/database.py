@@ -70,7 +70,7 @@ def create_engine_for_url(database_url: str) -> AsyncEngine:
 	return create_async_engine(database_url)
 
 
-engine = create_engine_for_url(get_settings().database_url)
+engine = create_engine_for_url(get_settings().postgres.url)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 

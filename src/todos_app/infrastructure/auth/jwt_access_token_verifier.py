@@ -15,10 +15,10 @@ class JwtAccessTokenVerifier:
 		try:
 			payload = decode(
 				jwt=token,
-				key=self._settings.jwt_secret_key,
+				key=self._settings.jwt.secret_key,
 				algorithms=["HS256"],
-				audience=self._settings.jwt_audience,
-				issuer=self._settings.jwt_issuer,
+				audience=self._settings.jwt.audience,
+				issuer=self._settings.jwt.issuer,
 			)
 		except PyJWTError:
 			return None

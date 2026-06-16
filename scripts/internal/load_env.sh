@@ -1,57 +1,74 @@
 # shellcheck shell=bash
-# Safe dotenv loading for scripts. Requires PROJECT_ROOT before env_load_ports / env_load_secrets.
+# Load env profile via Python export. Requires PROJECT_ROOT and .venv.
 
-env_safe_source() {
-	local env_file="$1"
-	local key value
-	while IFS='=' read -r key value; do
-		[[ "$key" =~ ^[[:space:]]*# ]] && continue
-		[[ -z "$key" ]] && continue
-		key="${key## }"
-		key="${key%% }"
-		if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-			export "$key"="$value"
-		fi
-	done <"$env_file"
+env_require_venv() {
+	if [[ ! -x "${PROJECT_ROOT}/.venv/bin/python" ]]; then
+		echo "Missing ${PROJECT_ROOT}/.venv — run: python3 -m venv .venv && pip install -e \".[dev]\"" >&2
+		exit 1
+	fi
 }
 
-env_require_ports() {
-	: "${API_HOST:?set API_HOST in config/ports.env}"
-	: "${API_PORT:?set API_PORT in config/ports.env}"
-	: "${POSTGRES_PORT:?set POSTGRES_PORT in config/ports.env}"
-	: "${VALKEY_PORT:?set VALKEY_PORT in config/ports.env}"
-	: "${COMPOSE_APP_BIND:?set COMPOSE_APP_BIND in config/ports.env}"
-	: "${COMPOSE_INFRA_BIND:?set COMPOSE_INFRA_BIND in config/ports.env}"
-	export API_HOST API_PORT POSTGRES_PORT VALKEY_PORT COMPOSE_APP_BIND COMPOSE_INFRA_BIND
+env_require_profile() {
+	if [[ -z "${ENV_PROFILE:-}" ]]; then
+		echo "ENV_PROFILE is not set." >&2
+		echo "Export a profile name matching src/env_config/profiles/<name>.py, for example:" >&2
+		echo "  export ENV_PROFILE=local       # copy from profiles/example.py" >&2
+		echo "  export ENV_PROFILE=local2      # extra local stack (custom ports)" >&2
+		echo "  export ENV_PROFILE=test        # pytest / CI" >&2
+		echo "  export ENV_PROFILE=production  # copy from profiles/production.example.py" >&2
+		exit 1
+	fi
 }
 
-env_load_ports() {
+env_apply_profile() {
 	if [[ -z "${PROJECT_ROOT:-}" ]]; then
-		echo "env_load_ports: PROJECT_ROOT is not set" >&2
+		echo "env_apply_profile: PROJECT_ROOT is not set" >&2
 		exit 1
 	fi
-	if [[ ! -f "${PROJECT_ROOT}/config/ports.env" ]]; then
-		echo "env_load_ports: missing ${PROJECT_ROOT}/config/ports.env" >&2
-		exit 1
-	fi
-	env_safe_source "${PROJECT_ROOT}/config/ports.env"
-	if [[ -f "${PROJECT_ROOT}/config/ports.local.env" ]]; then
-		env_safe_source "${PROJECT_ROOT}/config/ports.local.env"
-	fi
-	env_require_ports
+	env_require_profile
+	env_require_venv
+	# shellcheck disable=SC1090
+	eval "$(
+		PYTHONPATH="${PROJECT_ROOT}/src" \
+			"${PROJECT_ROOT}/.venv/bin/python" -m env_config.export --shell
+	)"
 }
 
-env_load_secrets() {
+env_write_dotenv() {
 	if [[ -z "${PROJECT_ROOT:-}" ]]; then
-		echo "env_load_secrets: PROJECT_ROOT is not set" >&2
+		echo "env_write_dotenv: PROJECT_ROOT is not set" >&2
 		exit 1
 	fi
-	if [[ -f "${PROJECT_ROOT}/.env" ]]; then
-		env_safe_source "${PROJECT_ROOT}/.env"
+	env_require_venv
+	PYTHONPATH="${PROJECT_ROOT}/src" \
+		"${PROJECT_ROOT}/.venv/bin/python" -m env_config.export --dotenv >"${PROJECT_ROOT}/.env"
+}
+
+# Patch generated .env with in-network URLs for Path B app + compose interpolation.
+# Host scripts (Path A) reload from the Python profile via env_load_stack — not from .env.
+compose_sync_dotenv_urls() {
+	local dotenv="${PROJECT_ROOT}/.env"
+	if [[ ! -f "$dotenv" ]]; then
+		echo "compose_sync_dotenv_urls: missing ${dotenv} — run env_write_dotenv first" >&2
+		exit 1
 	fi
+	if [[ -z "${COMPOSE_DATABASE_URL:-}" ]] || [[ -z "${COMPOSE_VALKEY_URL:-}" ]]; then
+		echo "compose_sync_dotenv_urls: COMPOSE_DATABASE_URL and COMPOSE_VALKEY_URL must be set" >&2
+		exit 1
+	fi
+	local tmp
+	tmp="$(mktemp)"
+	grep -v -E '^(COMPOSE_DATABASE_URL|COMPOSE_VALKEY_URL|DATABASE_URL|VALKEY_URL)=' "$dotenv" >"$tmp" || true
+	{
+		cat "$tmp"
+		printf 'DATABASE_URL=%s\n' "$COMPOSE_DATABASE_URL"
+		printf 'VALKEY_URL=%s\n' "$COMPOSE_VALKEY_URL"
+		printf 'COMPOSE_DATABASE_URL=%s\n' "$COMPOSE_DATABASE_URL"
+		printf 'COMPOSE_VALKEY_URL=%s\n' "$COMPOSE_VALKEY_URL"
+	} >"$dotenv"
+	rm -f "$tmp"
 }
 
 env_load_stack() {
-	env_load_ports
-	env_load_secrets
+	env_apply_profile
 }

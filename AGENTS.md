@@ -17,6 +17,7 @@ Follow the layer boundaries, Protocol-based ports, and Depends injection pattern
 | Topic | Doc |
 |-------|-----|
 | Layer boundaries, DI, testing layout | [docs/architecture.md](docs/architecture.md) |
+| Env profiles (`ENV_PROFILE`, `src/env_config/`) | [docs/architecture.md#configuration-and-secrets](docs/architecture.md#configuration-and-secrets) |
 | Schema, migrations, seed/wipe | [docs/database.md](docs/database.md) |
 | JWT login, roles, route protection | [docs/authentication.md](docs/authentication.md) |
 | Local setup, venv, Podman Compose | [docs/getting-started.md](docs/getting-started.md) |
@@ -32,7 +33,7 @@ When the **todos-backend** MCP server is enabled in Cursor, **use MCP tools firs
 
 1. **Read tool schemas** under `mcps/project-0-todo-todos-backend/tools/` before calling.
 2. **Prefer MCP** when the server is connected; fall back to project skills or `./scripts/*.sh` only if MCP is disabled or a tool fails.
-3. **Destructive MCP tools** (`db_seed`, `db_wipe`, `stack_compose_down` with `remove=true`) require `MCP_ALLOW_DESTRUCTIVE=true` in repo `.env` (preferred for local dev) — see [docs/mcp.md](docs/mcp.md).
+3. **Destructive MCP tools** (`db_seed`, `db_wipe`, `stack_compose_down` with `remove=true`) require `mcp_allow_destructive=true` in [`src/env_config/profiles/local.py`](src/env_config/profiles/local.py) (or `.cursor/mcp.json` `env`) — see [docs/mcp.md](docs/mcp.md).
 
 | Task | MCP tool | Fallback |
 |------|----------|----------|
@@ -54,9 +55,9 @@ When you change **HTTP routes**, **request/response shapes**, or **repo scripts*
 
 | Change | Update |
 |--------|--------|
-| New/changed route or query param | Matching tool in `mcp/todos-backend/src/todos_mcp/tools/`; refresh [`openapi.snapshot.json`](mcp/todos-backend/openapi.snapshot.json) |
+| New/changed route or query param | Matching tool in `mcp/todos-backend/src/todos_mcp/tools/`; local gate refreshes [`.cursor/openapi.snapshot.json`](.cursor/openapi.snapshot.json) (or `./scripts/mcp/export_openapi.sh`) |
 | Script moved/renamed | Paths in `tools/lifecycle.py` and `scripts_runner.py` |
-| Env/ports loading | `mcp/todos-backend/src/todos_mcp/config.py`; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
+| Env/ports loading | `src/env_config/` (`loader.py`, `export.py`, profiles); MCP `config.py` adds `repo_root/src` to path; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
 | Tool behavior/docs | Docstrings on `@mcp.tool()` handlers; [`docs/mcp.md`](docs/mcp.md) and [`mcp/todos-backend/README.md`](mcp/todos-backend/README.md) |
 
 Run `./scripts/quality/checks.sh` — MCP tests are part of the gate. `.cursor/mcp.json` rarely changes (only interpreter path or server `env` overrides).
@@ -127,7 +128,7 @@ When adding or changing behavior, place tests by layer:
 
 - Set `pytestmark = pytest.mark.unit` or `pytest.mark.integration` on **every** test module.
 - Tests use a PostgreSQL test database from `tests/conftest.py` via Alembic `upgrade head` — they do **not** use Compose volumes.
-- `JWT_SECRET_KEY` is set in `tests/conftest.py`; the suite does not depend on `.env`.
+- `ENV_PROFILE=test` loads [`src/env_config/profiles/test.py`](src/env_config/profiles/test.py); the suite does not depend on `local.py` or hand-edited `.env`.
 - After substantive changes, use the `run-checks` skill (preferred): `./scripts/quality/checks.sh --fix`, then `./scripts/quality/checks.sh` until clean. Use `run-tests` with `--coverage` only when the gate is not needed.
 
 ## CI
@@ -168,15 +169,15 @@ See [docs/database.md](docs/database.md) for PostgreSQL-specific notes.
 
 ## Local development paths
 
-| Path | When | Compose / run | DB / cache in `.env` |
-|------|------|---------------|----------------------|
-| **A — Host app** | Day-to-day API dev (default) | `docker-compose.infra.yml` + `./scripts/start.sh` | `127.0.0.1` |
-| **B — Local full stack** | Prod-like local smoke | `docker-compose.infra.yml` + `docker-compose.app.base.yml` + `docker-compose.app.with-infra.yml` via `./scripts/container/up.sh` | `127.0.0.1` (rewritten inside app container) |
-| **C — Production** | Staging / production | `docker-compose.app.base.yml` only via `./scripts/container/deploy.sh` | External managed URLs |
+| Path | When | Compose / run | Config |
+|------|------|---------------|--------|
+| **A — Host app** | Day-to-day API dev (default) | `docker-compose.infra.yml` + `./scripts/start.sh` | `ENV_PROFILE=local` + `profiles/local.py` |
+| **B — Local full stack** | Prod-like local smoke | `docker-compose.infra.yml` + `docker-compose.app.base.yml` + `docker-compose.app.with-infra.yml` via `./scripts/container/up.sh` | same; URLs rewritten inside app container |
+| **C — Production** | Staging / production | `docker-compose.app.base.yml` only via `./scripts/container/deploy.sh` | `ENV_PROFILE=production` + gitignored `profiles/production.py` |
 
 - **Migrate / seed / wipe** (`./scripts/database/migrate.sh`, `./scripts/database/seed.sh`, `./scripts/database/wipe.sh`): local Paths A and B only; run DB ops via the app container for Path B. Prefer MCP (`db_migrate`, `db_seed`, `db_wipe`); fall back to `alembic-migrate` and `db-local-ops` skills.
 - **Path B lifecycle** (`up.sh`, `down.sh`, `logs.sh`): prefer MCP (`stack_compose_up`, `stack_compose_down`); fall back to the `podman-compose` skill.
-- **Path C lifecycle** (`deploy.sh`, `down.sh --prod`, `logs.sh --prod`): copy [`.env.production.example`](.env.production.example) to `.env` on the deploy host — see [docs/deployment.md](docs/deployment.md#path-c--app-only-compose-primary).
+- **Path C lifecycle** (`deploy.sh`, `down.sh --prod`, `logs.sh --prod`): copy [`production.example.py`](src/env_config/profiles/production.example.py) to `profiles/production.py`, set `ENV_PROFILE=production` — see [docs/deployment.md](docs/deployment.md#path-c--app-only-compose-primary).
 
 ## Identifiers
 

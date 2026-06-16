@@ -38,7 +38,8 @@ Options:
   --keep              Leave the last Compose stack running (debug)
   -h, --help          Show this help
 
-Requires: .venv with pip install -e ".[dev]", curl, podman, PostgreSQL on 127.0.0.1 (POSTGRES_PORT, default 5432) for pytest.
+Requires: .venv with pip install -e ".[dev]", curl, podman, PostgreSQL on 127.0.0.1 (POSTGRES_PORT from active profile) for pytest.
+Set ENV_PROFILE to a local dev profile (APP_ENV=local) before running — commonly export ENV_PROFILE=local.
 EOF
 }
 
@@ -92,11 +93,6 @@ verify_should_run() {
 	return 1
 }
 
-verify_postgres_url() {
-	verify_load_ports
-	echo "postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@127.0.0.1:${POSTGRES_PORT:?set POSTGRES_PORT in config/ports.env}/${POSTGRES_DB:?set POSTGRES_DB in .env}"
-}
-
 verify_run_scenario() {
 	local filter="$1"
 	shift
@@ -148,10 +144,10 @@ fi
 echo "verify_stack: starting (filter=${ONLY})"
 
 verify_run_scenario postgres verify_run_bare_metal \
-	"bare-metal/postgres" "$(verify_postgres_url)" "$SKIP_HTTP"
+	"bare-metal/postgres" "$SKIP_HTTP"
 
 verify_run_scenario compose-postgres verify_run_compose \
-	"compose/postgres" "$(verify_postgres_url)" "$SKIP_HTTP" "$KEEP"
+	"compose/postgres" "$SKIP_HTTP" "$KEEP"
 
 verify_run_coverage
 

@@ -136,11 +136,26 @@ def cmd_pytest_output(stdin: TextIO | None = None) -> int:
 	text = src.read()
 	errors = 0
 	warnings = 0
-	fail_match = re.search(r"(\d+) failed", text)
-	if fail_match:
-		failed = int(fail_match.group(1))
-		errors += failed
-		_emit_error(sys.stdout, f"{failed} test(s) failed", title="pytest")
+	summary_match = re.search(r"=+\s*(\d+) passed(?:,\s*(\d+) failed)?(?:,\s*(\d+) errors?)?", text)
+	if summary_match:
+		failed = int(summary_match.group(2) or 0)
+		errored = int(summary_match.group(3) or 0)
+		errors = failed + errored
+		if failed:
+			_emit_error(sys.stdout, f"{failed} test(s) failed", title="pytest")
+		if errored:
+			_emit_error(sys.stdout, f"{errored} test(s) errored", title="pytest")
+	else:
+		fail_match = re.search(r"(\d+) failed", text)
+		if fail_match:
+			failed = int(fail_match.group(1))
+			errors += failed
+			_emit_error(sys.stdout, f"{failed} test(s) failed", title="pytest")
+		error_match = re.search(r"(\d+) errors?", text)
+		if error_match:
+			errored = int(error_match.group(1))
+			errors += errored
+			_emit_error(sys.stdout, f"{errored} test(s) errored", title="pytest")
 	warn_match = re.search(r"(\d+) warnings?", text)
 	if warn_match:
 		warnings = int(warn_match.group(1))

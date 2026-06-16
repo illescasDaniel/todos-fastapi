@@ -1,6 +1,7 @@
 import pytest
 from fastapi.security import HTTPAuthorizationCredentials
 
+from env_helpers import make_env_settings
 from factories import TEST_USER_ID
 from fakes.user_auth_cache import FakeUserAuthCache
 from fakes.user_repository import FakeUserRepository
@@ -18,7 +19,7 @@ _VALID_SECRET = "test-secret-key-for-pytest-suite-32bytes!"
 
 @pytest.fixture
 def settings() -> Settings:
-	return Settings(jwt_secret_key=_VALID_SECRET, auth_user_cache_ttl_seconds=120)
+	return make_env_settings(jwt_secret_key=_VALID_SECRET, auth_user_cache_ttl_seconds=120)
 
 
 @pytest.fixture
@@ -51,45 +52,51 @@ def bearer_token(settings: Settings) -> str:
 	return issuer.issue(user_id=TEST_USER_ID, username="jane", role="user", token_version=0)
 
 
-async def test_get_current_user_always_fetches_db(
+async def test_given_valid_bearer_token_when_getting_current_user_then_reads_role_from_db(
 	repo: FakeUserRepository,
 	auth_cache: FakeUserAuthCache,
 	settings: Settings,
 	bearer_token: str,
 ) -> None:
 	"""M5: DB is always consulted for fresh role and is_active even if cache has an entry."""
+	# given
 	verifier = JwtAccessTokenVerifier(settings)
 	credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=bearer_token)
 
+	# when
 	user = await get_current_user(credentials, verifier, repo, auth_cache, settings)
 
-	# Role and is_active come from DB (the DB user has role="user")
+	# then
 	assert user.role == "user"
 	assert user.username == "jane"
 
 
-async def test_get_current_user_populates_cache(
+async def test_given_valid_bearer_token_when_getting_current_user_then_populates_cache(
 	repo: FakeUserRepository,
 	auth_cache: FakeUserAuthCache,
 	settings: Settings,
 	bearer_token: str,
 ) -> None:
+	# given
 	verifier = JwtAccessTokenVerifier(settings)
 	credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=bearer_token)
 
+	# when
 	user = await get_current_user(credentials, verifier, repo, auth_cache, settings)
 
+	# then
 	assert user.username == "jane"
 	cached = await auth_cache.get_active_user(TEST_USER_ID)
 	assert cached == user
 
 
-async def test_get_current_user_rejects_stale_token_version(
+async def test_given_stale_token_version_when_getting_current_user_then_returns_401(
 	repo: FakeUserRepository,
 	auth_cache: FakeUserAuthCache,
 	settings: Settings,
 ) -> None:
 	"""H1: token with outdated token_version is rejected."""
+	# given
 	from fastapi import HTTPException
 
 	issuer = JwtAccessTokenIssuer(settings)
@@ -97,6 +104,9 @@ async def test_get_current_user_rejects_stale_token_version(
 	verifier = JwtAccessTokenVerifier(settings)
 	credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=stale_token)
 
+	# when
 	with pytest.raises(HTTPException) as exc_info:
 		await get_current_user(credentials, verifier, repo, auth_cache, settings)
+
+	# then
 	assert exc_info.value.status_code == 401

@@ -9,17 +9,25 @@ from todos_app.domain.ids import UNKNOWN_ID
 pytestmark = pytest.mark.integration
 
 
-async def test_get_me_returns_authenticated_user(client: AsyncClient) -> None:
-	payload, token = await register_and_login(client)
-	response = await client.get("/users/me", headers=auth_headers(token))
+async def test_given_authenticated_user_when_getting_me_then_returns_profile(client: AsyncClient) -> None:
+	# given
+	user = await register_and_login(client)
+
+	# when
+	response = await client.get("/users/me", headers=auth_headers(user.token))
+
+	# then
 	assert response.status_code == 200
 	body = response.json()
-	assert body["username"] == payload["username"]
-	assert body["email"] == payload["email"]
+	assert body["username"] == user.payload["username"]
+	assert body["email"] == user.payload["email"]
 
 
-async def test_replace_me_updates_profile(client: AsyncClient) -> None:
-	_, token = await register_and_login(client)
+async def test_given_authenticated_user_when_replacing_me_then_updates_profile(client: AsyncClient) -> None:
+	# given
+	user = await register_and_login(client)
+
+	# when
 	response = await client.put(
 		"/users/me",
 		json={
@@ -28,131 +36,216 @@ async def test_replace_me_updates_profile(client: AsyncClient) -> None:
 			"first_name": "Updated",
 			"last_name": "Name",
 		},
-		headers=auth_headers(token),
+		headers=auth_headers(user.token),
 	)
+
+	# then
 	assert response.status_code == 200
 	body = response.json()
 	assert body["email"] == "updated@example.com"
 	assert body["first_name"] == "Updated"
 
 
-async def test_patch_me_updates_partial_profile(client: AsyncClient) -> None:
-	_, token = await register_and_login(client)
+async def test_given_authenticated_user_when_patching_me_then_updates_partial_profile(
+	client: AsyncClient,
+) -> None:
+	# given
+	user = await register_and_login(client)
+
+	# when
 	response = await client.patch(
 		"/users/me",
 		json={"last_name": "Patched"},
-		headers=auth_headers(token),
+		headers=auth_headers(user.token),
 	)
+
+	# then
 	assert response.status_code == 200
 	assert response.json()["last_name"] == "Patched"
 
 
-async def test_signup_rejects_client_controlled_role(client: AsyncClient) -> None:
+async def test_given_signup_payload_with_admin_role_when_creating_user_then_returns_422(
+	client: AsyncClient,
+) -> None:
+	# given
 	payload = user_signup_payload(role="admin")
+
+	# when
 	response = await client.post("/users", json=payload)
+
+	# then
 	assert response.status_code == 422
 
 
-async def test_signup_always_creates_user_role(client: AsyncClient) -> None:
+async def test_given_valid_signup_payload_when_creating_user_then_assigns_user_role(
+	client: AsyncClient,
+) -> None:
+	# given
 	payload = user_signup_payload()
+
+	# when
 	response = await client.post("/users", json=payload)
+
+	# then
 	assert response.status_code == 201
 	assert response.json()["role"] == "user"
 
 
-async def test_admin_replace_user(client: AsyncClient) -> None:
-	target_payload, target_token = await register_and_login(client)
-	_, admin_token = await register_admin_and_login(client)
-	target_id = (await client.get("/users/me", headers=auth_headers(target_token))).json()["id"]
+async def test_given_admin_and_target_user_when_replacing_user_then_updates_profile(
+	client: AsyncClient,
+) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
 
+	# when
 	response = await client.put(
-		f"/users/{target_id}",
+		f"/users/{target.user_id}",
 		json={
-			"email": target_payload["email"],
-			"username": target_payload["username"],
+			"email": target.payload["email"],
+			"username": target.payload["username"],
 			"first_name": "Admin",
 			"last_name": "Updated",
 			"role": "user",
 			"is_active": True,
 		},
-		headers=auth_headers(admin_token),
+		headers=auth_headers(admin.token),
 	)
+
+	# then
 	assert response.status_code == 200
 	assert response.json()["first_name"] == "Admin"
 
 
-async def test_admin_patch_user(client: AsyncClient) -> None:
-	_, target_token = await register_and_login(client)
-	_, admin_token = await register_admin_and_login(client)
-	target_id = (await client.get("/users/me", headers=auth_headers(target_token))).json()["id"]
+async def test_given_admin_and_target_user_when_patching_user_role_then_promotes_to_admin(
+	client: AsyncClient,
+) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
 
+	# when
 	response = await client.patch(
-		f"/users/{target_id}",
+		f"/users/{target.user_id}",
 		json={"role": "admin"},
-		headers=auth_headers(admin_token),
+		headers=auth_headers(admin.token),
 	)
+
+	# then
 	assert response.status_code == 200
 	assert response.json()["role"] == "admin"
 
 
-async def test_non_admin_cannot_delete_user(client: AsyncClient) -> None:
-	_, owner_token = await register_and_login(client)
-	_, other_token = await register_and_login(client)
-	owner_id = (await client.get("/users/me", headers=auth_headers(owner_token))).json()["id"]
+async def test_given_non_admin_user_when_deleting_another_user_then_returns_403(
+	client: AsyncClient,
+) -> None:
+	# given
+	owner = await register_and_login(client)
+	other = await register_and_login(client)
 
-	response = await client.delete(f"/users/{owner_id}", headers=auth_headers(other_token))
+	# when
+	response = await client.delete(f"/users/{owner.user_id}", headers=auth_headers(other.token))
+
+	# then
 	assert response.status_code == 403
 
 
-async def test_admin_soft_delete_deactivates_user(client: AsyncClient) -> None:
-	target_payload, target_token = await register_and_login(client)
-	_, admin_token = await register_admin_and_login(client)
-	target_id = (await client.get("/users/me", headers=auth_headers(target_token))).json()["id"]
+async def test_given_admin_and_active_user_when_soft_deleting_user_then_returns_204(
+	client: AsyncClient,
+) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
 
-	response = await client.delete(f"/users/{target_id}", headers=auth_headers(admin_token))
+	# when
+	response = await client.delete(f"/users/{target.user_id}", headers=auth_headers(admin.token))
+
+	# then
 	assert response.status_code == 204
 
+
+async def test_given_soft_deleted_user_when_logging_in_then_returns_401(client: AsyncClient) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
+	await client.delete(f"/users/{target.user_id}", headers=auth_headers(admin.token))
+
+	# when
 	login_response = await client.post(
 		"/auth/login",
-		json={"username": target_payload["username"], "password": target_payload["password"]},
+		json={"username": target.payload["username"], "password": target.payload["password"]},
 	)
+
+	# then
 	assert login_response.status_code == 401
 
 
-async def test_admin_hard_delete_removes_user(client: AsyncClient) -> None:
-	_, target_token = await register_and_login(client)
-	_, admin_token = await register_admin_and_login(client)
-	target_id = (await client.get("/users/me", headers=auth_headers(target_token))).json()["id"]
+async def test_given_admin_and_active_user_when_hard_deleting_user_then_returns_204(
+	client: AsyncClient,
+) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
 
+	# when
 	response = await client.delete(
-		f"/users/{target_id}",
+		f"/users/{target.user_id}",
 		params={"hard": "true"},
-		headers=auth_headers(admin_token),
+		headers=auth_headers(admin.token),
 	)
+
+	# then
 	assert response.status_code == 204
 
-	me_response = await client.get("/users/me", headers=auth_headers(target_token))
+
+async def test_given_hard_deleted_user_with_old_token_when_getting_me_then_returns_401(
+	client: AsyncClient,
+) -> None:
+	# given
+	target = await register_and_login(client)
+	admin = await register_admin_and_login(client)
+	await client.delete(
+		f"/users/{target.user_id}",
+		params={"hard": "true"},
+		headers=auth_headers(admin.token),
+	)
+
+	# when
+	me_response = await client.get("/users/me", headers=auth_headers(target.token))
+
+	# then
 	assert me_response.status_code == 401
 
 
-async def test_admin_update_missing_user_returns_404(client: AsyncClient) -> None:
-	_, admin_token = await register_admin_and_login(client)
+async def test_given_admin_and_unknown_user_id_when_patching_user_then_returns_404(
+	client: AsyncClient,
+) -> None:
+	# given
+	admin = await register_admin_and_login(client)
+
+	# when
 	response = await client.patch(
 		f"/users/{UNKNOWN_ID}",
 		json={"first_name": "Ghost"},
-		headers=auth_headers(admin_token),
+		headers=auth_headers(admin.token),
 	)
+
+	# then
 	assert response.status_code == 404
 
 
-async def test_duplicate_email_returns_400(client: AsyncClient) -> None:
+async def test_given_existing_email_when_signing_up_again_then_returns_generic_400(client: AsyncClient) -> None:
 	"""M2: duplicate signup returns 400 with generic message to prevent account enumeration."""
+	# given
 	payload = user_signup_payload()
 	first = await client.post("/users", json=payload)
 	assert first.status_code == 201
-
 	duplicate = user_signup_payload(email=payload["email"])
+
+	# when
 	second = await client.post("/users", json=duplicate)
+
+	# then
 	assert second.status_code == 400
 	detail = second.json()["detail"][0]
 	assert detail["msg"] == "Unable to create account"

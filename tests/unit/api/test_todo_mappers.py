@@ -9,22 +9,34 @@ from todos_app.domain.todos.entity import Todo
 pytestmark = pytest.mark.unit
 
 
-def test_create_to_entity_maps_optional_null_fields() -> None:
+def test_given_minimal_create_body_when_mapping_to_entity_then_maps_null_optionals() -> None:
+	# given
 	body = TodoCreate(title="Task only")
-	entity = mappers.create_to_entity(body, owner_id=TEST_ACTOR_ID)
+	owner_id = TEST_ACTOR_ID
+
+	# when
+	entity = mappers.create_to_entity(body, owner_id=owner_id)
+
+	# then
 	assert entity.title == "Task only"
 	assert entity.description is None
 	assert entity.priority is None
 
 
-def test_create_to_entity_maps_fields() -> None:
+def test_given_full_create_body_when_mapping_to_entity_then_maps_all_fields() -> None:
+	# given
 	body = TodoCreate(
 		title="Task",
 		description="Details",
 		priority="high",
 		completed=True,
 	)
-	entity = mappers.create_to_entity(body, owner_id=TEST_ACTOR_ID)
+	owner_id = TEST_ACTOR_ID
+
+	# when
+	entity = mappers.create_to_entity(body, owner_id=owner_id)
+
+	# then
 	assert entity.id is None
 	assert entity.title == "Task"
 	assert entity.description == "Details"
@@ -33,7 +45,8 @@ def test_create_to_entity_maps_fields() -> None:
 	assert entity.owner_id == TEST_ACTOR_ID
 
 
-def test_to_response_maps_entity() -> None:
+def test_given_todo_entity_when_mapping_to_response_then_maps_fields() -> None:
+	# given
 	todo = Todo(
 		id=TEST_TODO_ID,
 		title="Task",
@@ -42,26 +55,36 @@ def test_to_response_maps_entity() -> None:
 		completed=False,
 		owner_id=TEST_USER_ID,
 	)
+
+	# when
 	response = mappers.to_response(todo)
+
+	# then
 	assert response.id == TEST_TODO_ID
 	assert response.title == "Task"
 	assert response.owner_id == TEST_USER_ID
 
 
-def test_update_to_entity_maps_fields() -> None:
+def test_given_update_body_when_mapping_to_entity_then_maps_fields() -> None:
+	# given
 	body = TodoUpdate(
 		title="Updated",
 		description="New details",
 		priority="low",
 		completed=True,
 	)
+
+	# when
 	entity = mappers.update_to_entity(body, todo_id=TEST_TODO_ID, owner_id=TEST_USER_ID)
+
+	# then
 	assert entity.id == TEST_TODO_ID
 	assert entity.title == "Updated"
 	assert entity.owner_id == TEST_USER_ID
 
 
-def test_apply_todo_patch_clears_description() -> None:
+def test_given_null_description_patch_when_applying_to_todo_then_clears_description() -> None:
+	# given
 	existing = Todo(
 		id=TEST_TODO_ID,
 		title="Task",
@@ -70,19 +93,29 @@ def test_apply_todo_patch_clears_description() -> None:
 		completed=False,
 		owner_id=TEST_USER_ID,
 	)
+
+	# when
 	updated = mappers.apply_todo_patch(existing, {"description": None}, owner_id=TEST_USER_ID)
+
+	# then
 	assert updated.description is None
 	assert updated.title == "Task"
 	assert updated.priority == "high"
 
 
-def test_patch_fields_includes_explicit_null_description() -> None:
+def test_given_explicit_null_description_when_extracting_patch_fields_then_includes_null() -> None:
+	# given
+
+	# when
 	body = TodoPatch.model_validate({"description": None})
 	fields = mappers.patch_fields(body)
+
+	# then
 	assert fields == {"description": None}
 
 
-def test_apply_todo_patch_merges_fields() -> None:
+def test_given_partial_patch_fields_when_applying_to_todo_then_merges_fields() -> None:
+	# given
 	existing = Todo(
 		id=TEST_TODO_ID,
 		title="Task",
@@ -91,19 +124,33 @@ def test_apply_todo_patch_merges_fields() -> None:
 		completed=False,
 		owner_id=TEST_USER_ID,
 	)
-	updated = mappers.apply_todo_patch(existing, {"title": "Patched", "completed": True}, owner_id=TEST_USER_ID)
+
+	# when
+	updated = mappers.apply_todo_patch(
+		existing,
+		{"title": "Patched", "completed": True},
+		owner_id=TEST_USER_ID,
+	)
+
+	# then
 	assert updated.title == "Patched"
 	assert updated.completed is True
 	assert updated.description == "Details"
 
 
-def test_patch_fields_excludes_unset() -> None:
+def test_given_partial_patch_body_when_extracting_patch_fields_then_excludes_unset() -> None:
+	# given
 	body = TodoPatch(title="Patched")
+
+	# when
 	fields = mappers.patch_fields(body)
+
+	# then
 	assert fields == {"title": "Patched"}
 
 
-def test_to_response_list_maps_entities() -> None:
+def test_given_todo_list_when_mapping_to_responses_then_maps_all_entities() -> None:
+	# given
 	todos = [
 		Todo(
 			id=TEST_TODO_ID,
@@ -122,7 +169,11 @@ def test_to_response_list_maps_entities() -> None:
 			owner_id=TEST_USER_ID,
 		),
 	]
+
+	# when
 	responses = mappers.to_response_list(todos)
+
+	# then
 	assert len(responses) == 2
 	assert responses[0].title == "A"
 	assert responses[1].title == "B"

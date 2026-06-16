@@ -1,6 +1,6 @@
 # API reference
 
-Once the server is running (`http://localhost:${API_PORT}` — `API_PORT` from [`config/ports.env`](../config/ports.env)), you can access the following resources.
+Once the server is running (`http://localhost:${API_PORT}` — `api_port` from your env profile), you can access the following resources.
 
 Obtain a JWT access token via `POST /auth/login` before calling protected routes — see [Authentication](authentication.md).
 

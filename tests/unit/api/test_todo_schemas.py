@@ -7,37 +7,77 @@ from todos_app.api.todos.schemas import TodoCreate, TodoPatch, TodoUpdate
 pytestmark = pytest.mark.unit
 
 
-def test_create_accepts_null_description_and_priority() -> None:
-	body = TodoCreate(title="Task only")
+def test_given_null_optional_fields_when_creating_todo_schema_then_accepts_body() -> None:
+	# given
+	title = "Task only"
+
+	# when
+	body = TodoCreate(title=title)
+
+	# then
 	assert body.description is None
 	assert body.priority is None
 
 
-def test_create_rejects_empty_title() -> None:
+def test_given_empty_title_when_creating_todo_schema_then_raises_validation_error() -> None:
+	# given
+	title = ""
+
+	# when
 	with pytest.raises(ValidationError):
-		TodoCreate(title="", description=None, priority=None)
+		TodoCreate(title=title, description=None, priority=None)
+
+	# then
 
 
-def test_create_rejects_empty_description() -> None:
+def test_given_empty_description_when_creating_todo_schema_then_raises_validation_error() -> None:
+	# given
+	description = ""
+
+	# when
 	with pytest.raises(ValidationError):
-		TodoCreate(title="Task", description="", priority=None)
+		TodoCreate(title="Task", description=description, priority=None)
+
+	# then
 
 
-def test_update_rejects_empty_priority() -> None:
+def test_given_empty_priority_when_updating_todo_schema_then_raises_validation_error() -> None:
+	# given
+	priority = ""
+
+	# when
 	with pytest.raises(ValidationError):
-		TodoUpdate(title="Task", description=None, priority="")
+		TodoUpdate(title="Task", description=None, priority=priority)
+
+	# then
 
 
-def test_patch_rejects_null_title() -> None:
+def test_given_null_title_when_patching_todo_schema_then_raises_validation_error() -> None:
+	# given
+
+	# when
 	with pytest.raises(ValidationError):
 		TodoPatch(title=None)
 
+	# then
 
-def test_patch_rejects_empty_description() -> None:
+
+def test_given_empty_description_when_patching_todo_schema_then_raises_validation_error() -> None:
+	# given
+	description = ""
+
+	# when
 	with pytest.raises(ValidationError):
-		TodoPatch(description="")
+		TodoPatch(description=description)
+
+	# then
 
 
-def test_patch_accepts_null_description() -> None:
+def test_given_null_description_when_patching_todo_schema_then_accepts_body() -> None:
+	# given
+
+	# when
 	body = TodoPatch(description=None)
+
+	# then
 	assert body.description is None

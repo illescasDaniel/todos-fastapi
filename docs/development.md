@@ -13,7 +13,7 @@ With your virtual environment active and development dependencies installed, you
 
 ## Type checking (basedpyright)
 
-[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). Included in the quality gate (`./scripts/quality/checks.sh`). Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
+[basedpyright](https://docs.basedpyright.com/) runs in **strict** mode on `src/`, `tests/`, and `mcp/todos-backend/` (root `pyproject.toml` → `[tool.basedpyright]`). Included packages: `todos_app`, `env_config`, tests, MCP. Included in the quality gate (`./scripts/quality/checks.sh`). Fix type errors in `src/todos_app/` when introducing or changing typed APIs; test and MCP files may use targeted `# pyright: ignore` where pytest fixtures or third-party stubs require it.
 
 From the repo root with `.venv` active:
 
@@ -95,7 +95,9 @@ chmod +x scripts/quality/tests.sh   # once, if needed
 ./scripts/quality/tests.sh --coverage -m unit
 ```
 
-Tests use a PostgreSQL test database and a fixed JWT secret from [`tests/conftest.py`](../tests/conftest.py); they do not use Compose volumes or a host dev database. When `TEST_DATABASE_URL` is unset, the test runner derives it from `.env` secrets and `POSTGRES_PORT` in [`config/ports.env`](../config/ports.env). CI sets `TEST_DATABASE_URL` explicitly in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+Tests use a PostgreSQL test database from [`tests/conftest.py`](../tests/conftest.py) with `ENV_PROFILE=test` ([`src/env_config/profiles/test.py`](../src/env_config/profiles/test.py)); they do not use Compose volumes or a host dev database. CI sets `ENV_PROFILE=test` in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+[`scripts/quality/tests.sh`](../scripts/quality/tests.sh) recreates the infra PostgreSQL container when credentials do not match the test profile (for example after local dev with `ENV_PROFILE=local`).
 
 **Valkey is not required for tests** — `conftest.py` overrides `UserAuthCache` with `FakeUserAuthCache` so CI stays fast without a Valkey service.
 
@@ -110,7 +112,9 @@ Tests use a PostgreSQL test database and a fixed JWT secret from [`tests/conftes
 
 Shared helpers: [`tests/factories.py`](../tests/factories.py) (JSON payloads), [`tests/integration/api/helpers.py`](../tests/integration/api/helpers.py) (`register_and_login`, `auth_headers`).
 
-See [Testing](architecture.md#testing) for the full test tree, fixtures, and conventions.
+See [Testing](architecture.md#testing) for the full test tree, fixtures, and conventions (including [GWT naming](architecture.md#gwt-naming)).
+
+**Benchmark:** serial pytest timings and before/after integration optimizations — [test-benchmark.md](test-benchmark.md). Re-run with `./scripts/quality/benchmark_pytest.sh` (optional log path argument).
 
 ### Coverage (optional)
 
@@ -138,7 +142,7 @@ Per environment: migrate, seed, then **HTTP smoke checks** — `GET /health`, `P
 
 **When not to run:** routine feature work (use `./scripts/quality/tests.sh` instead).
 
-**Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, `API_PORT` free (from `config/ports.env`), PostgreSQL on `127.0.0.1:${POSTGRES_PORT}`. Set `POSTGRES_PASSWORD`, `POSTGRES_USER`, and `POSTGRES_DB` in `.env` (ports in `config/ports.env`).
+**Prerequisites:** `.venv` with `pip install -e ".[dev]"`, `curl`, rootless Podman, `api_port` free in your env profile, PostgreSQL on `127.0.0.1:${POSTGRES_PORT}`. Set `ENV_PROFILE=local` and configure [`src/env_config/profiles/local.py`](../src/env_config/profiles/local.py).
 
 ```bash
 ./scripts/verify/verify_stack.sh                         # all scenarios + coverage

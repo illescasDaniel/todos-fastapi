@@ -17,8 +17,7 @@ verify_bare_metal_cleanup() {
 
 verify_run_bare_metal() {
 	local scenario_name="$1"
-	local database_url="$2"
-	local skip_http="${3:-false}"
+	local skip_http="${2:-false}"
 
 	local start_ts end_ts elapsed
 	local http_result="-"
@@ -27,8 +26,7 @@ verify_run_bare_metal() {
 	echo ""
 	echo "=== ${scenario_name} ==="
 
-	export DATABASE_URL="$database_url"
-	verify_apply_defaults
+	verify_load_local_profile
 	cd "$PROJECT_ROOT" || return
 	verify_load_database_helpers
 
@@ -44,8 +42,8 @@ verify_run_bare_metal() {
 		# shellcheck disable=SC1091
 		source "$PROJECT_ROOT/.venv/bin/activate"
 		export PYTHONPATH=src
-		export JWT_SECRET_KEY="${JWT_SECRET_KEY:-$VERIFY_JWT_SECRET}"
-		fastapi run src/todos_app/main.py --host "$VERIFY_API_HOST" --port "$VERIFY_API_PORT" &
+		export JWT_SECRET_KEY="${JWT_SECRET_KEY:?set JWT_SECRET_KEY via env profile}"
+		fastapi run --entrypoint todos_app.main:app --host "$VERIFY_API_HOST" --port "$VERIFY_API_PORT" &
 		VERIFY_BARE_METAL_API_PID=$!
 		verify_wait_for_health "http://${VERIFY_API_HOST}:${VERIFY_API_PORT}"
 		if verify_http_smoke "http://${VERIFY_API_HOST}:${VERIFY_API_PORT}"; then

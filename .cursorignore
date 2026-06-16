@@ -1,12 +1,15 @@
 # Secrets and credentials — prevent AI context injection
 .env
 .env.*
-!.env.example
-!.env.production.example
 *.pem
 *.key
 *.p12
 *.pfx
+# Secrets — gitignored profile modules (see .gitignore whitelist under profiles/)
+src/env_config/profiles/*
+!src/env_config/profiles/example.py
+!src/env_config/profiles/production.example.py
+!src/env_config/profiles/test.py
 
 # Virtual environments
 .venv/
