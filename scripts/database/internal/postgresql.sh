@@ -9,10 +9,10 @@ _postgres_container_running() {
 }
 
 _postgres_auth_ok() {
-	local host="${1:-127.0.0.1}"
-	local port="${2:-${POSTGRES_PORT:?set POSTGRES_PORT in env profile}}"
-	local user="${3:-${POSTGRES_USER:?set POSTGRES_USER in env profile}}"
-	local password="${4:-${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}}"
+	local host="127.0.0.1"
+	local port="${POSTGRES_PORT:?set POSTGRES_PORT in env profile}"
+	local user="${POSTGRES_USER:?set POSTGRES_USER in env profile}"
+	local password="${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}"
 	if [[ -z "${password}" ]]; then
 		return 1
 	fi

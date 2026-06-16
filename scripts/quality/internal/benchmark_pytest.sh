@@ -83,7 +83,7 @@ log "=== SUMMARY ==="
 if command -v column >/dev/null 2>&1; then
 	column -t -s $'\t' "${TSV_FILE}" | tee -a "${LOG_FILE}"
 else
-	cat "${TSV_FILE}" | tee -a "${LOG_FILE}"
+	tee -a "${LOG_FILE}" <"${TSV_FILE}"
 fi
 
 log ""
