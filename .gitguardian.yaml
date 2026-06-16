@@ -1,0 +1,12 @@
+# ggshield / local secret-scan allowlist for known false positives.
+# GitHub App check runs (gitguardian[bot]) use the dashboard ignore list — see docs/secrets.md.
+version: 2
+
+secret:
+  ignored_matches:
+    - name: postgres env profile reference (not a hardcoded secret)
+      match: '${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in env profile}'
+    - name: postgres test profile reference (not a hardcoded secret)
+      match: '${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD via ENV_PROFILE test profile}'
+    - name: valkey env profile reference (not a hardcoded secret)
+      match: '${VALKEY_PASSWORD:?set VALKEY_PASSWORD in env profile}'
