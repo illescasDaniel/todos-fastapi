@@ -1,0 +1,64 @@
+{
+  "examples": [
+    {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "id": "019e7000-0000-7000-8000-000000000001",
+      "is_active": true,
+      "last_name": "Doe",
+      "role": "user",
+      "username": "jane"
+    }
+  ],
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "email": {
+      "format": "email",
+      "maxLength": 254,
+      "title": "Email",
+      "type": "string"
+    },
+    "username": {
+      "maxLength": 50,
+      "title": "Username",
+      "type": "string"
+    },
+    "first_name": {
+      "maxLength": 100,
+      "title": "First Name",
+      "type": "string"
+    },
+    "last_name": {
+      "maxLength": 100,
+      "title": "Last Name",
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "user",
+        "admin"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "is_active": {
+      "title": "Is Active",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "email",
+    "username",
+    "first_name",
+    "last_name",
+    "role",
+    "is_active"
+  ],
+  "title": "UserResponse",
+  "type": "object"
+}

@@ -10,6 +10,22 @@ Built with FastAPI, Pydantic validation, async SQLAlchemy persistence via [async
 
 **Requires Python 3.14+** (stdlib `uuid.uuid7()` for primary keys; same version as the [Dockerfile](Dockerfile) and Podman Compose stack).
 
+## API docs and client contracts
+
+FastAPI generates a full **OpenAPI 3** spec from the route definitions and Pydantic models. In local dev (`APP_ENV=local`):
+
+- **Swagger UI** at `/docs` — browse routes, inspect schemas, and send requests from the browser
+- **ReDoc** at `/redoc` — alternate reference layout
+- **`/openapi.json`** — machine-readable spec for codegen (Postman, OpenAPI Generator, etc.)
+
+For **mobile apps, SPAs, and other clients** that only need request/response shapes (not HTTP metadata), export standalone **JSON Schema** files:
+
+```bash
+./scripts/export_json_schemas.sh    # writes schemas/json/
+```
+
+See [JSON Schema export](docs/json-schemas.md) for the model list, bundle format, and codegen examples. Route tables and live doc URLs: [docs/api.md](docs/api.md).
+
 ## Tech stack
 
 - **FastAPI** — async HTTP API, OpenAPI, dependency injection
@@ -107,7 +123,8 @@ Individual steps (`ruff.sh`, `shellcheck.sh`, `pyright.sh`, `tests.sh`) and stac
 | [Getting started](docs/getting-started.md) | venv, install, `.env`, migrate, seed, run server                                                                                               |
 | [Database](docs/database.md)               | PostgreSQL, Alembic, seeding                                                                                                                   |
 | [Authentication](docs/authentication.md)   | JWT login, admin provisioning, sample users, [api.http](docs/api.http)                                                                         |
-| [API reference](docs/api.md)               | OpenAPI URLs, pagination, route tables                                                                                                         |
+| [API reference](docs/api.md)               | OpenAPI URLs, Swagger UI, pagination, route tables                                                                                             |
+| [JSON Schema export](docs/json-schemas.md) | Export Pydantic API models for mobile/web clients                                                                                              |
 | [Development](docs/development.md)         | `[checks.sh](docs/development.md#combined-quality-gate)`, Ruff, pytest, coverage, [stack verification](docs/development.md#stack-verification) |
 | [Deployment](docs/deployment.md)           | Podman image, Compose, staging/production                                                                                                      |
 | [Architecture](docs/architecture.md)       | Hexagonal layout, DI, code conventions                                                                                                         |

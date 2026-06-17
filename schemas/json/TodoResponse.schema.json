@@ -1,0 +1,68 @@
+{
+  "examples": [
+    {
+      "completed": true,
+      "description": "Initialize app, routes, and database wiring.",
+      "id": "019e7000-0000-7000-8000-000000000003",
+      "owner_id": "019e7000-0000-7000-8000-000000000001",
+      "priority": "high",
+      "title": "Set up FastAPI project"
+    }
+  ],
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "priority": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Priority"
+    },
+    "completed": {
+      "title": "Completed",
+      "type": "boolean"
+    },
+    "owner_id": {
+      "format": "uuid",
+      "title": "Owner Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "completed",
+    "owner_id"
+  ],
+  "title": "TodoResponse",
+  "type": "object"
+}

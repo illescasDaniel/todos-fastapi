@@ -22,6 +22,7 @@ Follow the layer boundaries, Protocol-based ports, and Depends injection pattern
 | JWT login, roles, route protection | [docs/authentication.md](docs/authentication.md) |
 | Local setup, venv, Podman Compose | [docs/getting-started.md](docs/getting-started.md) |
 | HTTP routes and OpenAPI | [docs/api.md](docs/api.md) |
+| JSON Schema export (client models) | [docs/json-schemas.md](docs/json-schemas.md) |
 | Manual HTTP samples (auth flow, seed IDs, request bodies) | [docs/api.http](docs/api.http) |
 | Lint, tests, coverage | [docs/development.md](docs/development.md) |
 | Stack verification (manual, Compose + PostgreSQL) | [docs/development.md#stack-verification](docs/development.md#stack-verification) — `./scripts/verify/verify_stack.sh` |
