@@ -57,6 +57,7 @@ When you change **HTTP routes**, **request/response shapes**, or **repo scripts*
 | Change | Update |
 |--------|--------|
 | New/changed route or query param | Matching tool in `mcp/todos-backend/src/todos_mcp/tools/`; local gate refreshes [`.cursor/openapi.snapshot.json`](.cursor/openapi.snapshot.json) (or `./scripts/mcp/export_openapi.sh`) |
+| New/changed API Pydantic model | Add to `api/schema_export/registry.py`; re-run `./scripts/export_json_schemas.sh` and commit `schemas/json/` |
 | Script moved/renamed | Paths in `tools/lifecycle.py` and `scripts_runner.py` |
 | Env/ports loading | `src/todos_app/core/config/` (`loader.py`, `export.py`) + `config/profiles/`; MCP `config.py` adds `repo_root/src` to path; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
 | Tool behavior/docs | Docstrings on `@mcp.tool()` handlers; [`docs/mcp.md`](docs/mcp.md) and [`mcp/todos-backend/README.md`](mcp/todos-backend/README.md) |
