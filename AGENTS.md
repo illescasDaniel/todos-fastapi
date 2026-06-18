@@ -22,6 +22,7 @@ Follow the layer boundaries, Protocol-based ports, and Depends injection pattern
 | JWT login, roles, route protection | [docs/authentication.md](docs/authentication.md) |
 | Local setup, venv, Podman Compose | [docs/getting-started.md](docs/getting-started.md) |
 | HTTP routes and OpenAPI | [docs/api.md](docs/api.md) |
+| JSON Schema export (client models) | [docs/json-schemas.md](docs/json-schemas.md) |
 | Manual HTTP samples (auth flow, seed IDs, request bodies) | [docs/api.http](docs/api.http) |
 | Lint, tests, coverage | [docs/development.md](docs/development.md) |
 | Stack verification (manual, Compose + PostgreSQL) | [docs/development.md#stack-verification](docs/development.md#stack-verification) — `./scripts/verify/verify_stack.sh` |
@@ -56,6 +57,7 @@ When you change **HTTP routes**, **request/response shapes**, or **repo scripts*
 | Change | Update |
 |--------|--------|
 | New/changed route or query param | Matching tool in `mcp/todos-backend/src/todos_mcp/tools/`; local gate refreshes [`.cursor/openapi.snapshot.json`](.cursor/openapi.snapshot.json) (or `./scripts/mcp/export_openapi.sh`) |
+| New/changed API Pydantic model | Add to `api/schema_export/registry.py`; re-run `./scripts/export_json_schemas.sh` and commit `schemas/json/` |
 | Script moved/renamed | Paths in `tools/lifecycle.py` and `scripts_runner.py` |
 | Env/ports loading | `src/todos_app/core/config/` (`loader.py`, `export.py`) + `config/profiles/`; MCP `config.py` adds `repo_root/src` to path; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
 | Tool behavior/docs | Docstrings on `@mcp.tool()` handlers; [`docs/mcp.md`](docs/mcp.md) and [`mcp/todos-backend/README.md`](mcp/todos-backend/README.md) |

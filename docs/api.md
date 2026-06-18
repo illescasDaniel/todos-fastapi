@@ -8,9 +8,11 @@ Server at `http://localhost:${API_PORT}` (`api.port` in env profile).
 
 IDs are **UUID v7** (`domain/ids.new_id()` on insert). After schema changes: `./scripts/database/migrate.sh` or `./scripts/database/seed.sh` for reset + demo data.
 
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) — interactive OpenAPI explorer (try requests in the browser)
 - **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI JSON:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json) (local only; hidden in staging/production)
 - **HTTP samples:** [api.http](api.http)
+- **JSON Schema export:** [json-schemas.md](json-schemas.md) — standalone model schemas for mobile/web clients (`./scripts/export_json_schemas.sh`)
 
 ### `/auth`
 

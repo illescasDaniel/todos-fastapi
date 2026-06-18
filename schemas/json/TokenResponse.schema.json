@@ -1,0 +1,24 @@
+{
+  "examples": [
+    {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "token_type": "bearer"
+    }
+  ],
+  "properties": {
+    "access_token": {
+      "title": "Access Token",
+      "type": "string"
+    },
+    "token_type": {
+      "default": "bearer",
+      "title": "Token Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "access_token"
+  ],
+  "title": "TokenResponse",
+  "type": "object"
+}

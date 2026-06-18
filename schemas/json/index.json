@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Todos API model index",
+  "description": "Manifest of exported Pydantic API schemas for client code generation.",
+  "mode": "validation",
+  "models": [
+    {
+      "name": "LoginRequest",
+      "group": "auth",
+      "description": "Credentials for POST /auth/login.",
+      "file": "LoginRequest.schema.json"
+    },
+    {
+      "name": "TokenResponse",
+      "group": "auth",
+      "description": "JWT access token returned by POST /auth/login.",
+      "file": "TokenResponse.schema.json"
+    },
+    {
+      "name": "TodoCreate",
+      "group": "todos",
+      "description": "Body for POST /todos.",
+      "file": "TodoCreate.schema.json"
+    },
+    {
+      "name": "TodoUpdate",
+      "group": "todos",
+      "description": "Body for PUT /todos/{todo_id}.",
+      "file": "TodoUpdate.schema.json"
+    },
+    {
+      "name": "TodoPatch",
+      "group": "todos",
+      "description": "Body for PATCH /todos/{todo_id}.",
+      "file": "TodoPatch.schema.json"
+    },
+    {
+      "name": "TodoResponse",
+      "group": "todos",
+      "description": "Single todo in API responses.",
+      "file": "TodoResponse.schema.json"
+    },
+    {
+      "name": "TodoListResponse",
+      "group": "todos",
+      "description": "Cursor-paginated list from GET /todos.",
+      "file": "TodoListResponse.schema.json"
+    },
+    {
+      "name": "UserSignup",
+      "group": "users",
+      "description": "Body for POST /users (public signup).",
+      "file": "UserSignup.schema.json"
+    },
+    {
+      "name": "UserSelfReplace",
+      "group": "users",
+      "description": "Body for PUT /users/me.",
+      "file": "UserSelfReplace.schema.json"
+    },
+    {
+      "name": "UserSelfPatch",
+      "group": "users",
+      "description": "Body for PATCH /users/me.",
+      "file": "UserSelfPatch.schema.json"
+    },
+    {
+      "name": "UserAdminReplace",
+      "group": "users",
+      "description": "Body for PUT /users/{user_id} (admin).",
+      "file": "UserAdminReplace.schema.json"
+    },
+    {
+      "name": "UserAdminPatch",
+      "group": "users",
+      "description": "Body for PATCH /users/{user_id} (admin).",
+      "file": "UserAdminPatch.schema.json"
+    },
+    {
+      "name": "UserResponse",
+      "group": "users",
+      "description": "User profile in API responses.",
+      "file": "UserResponse.schema.json"
+    }
+  ]
+}

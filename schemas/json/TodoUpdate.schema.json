@@ -1,0 +1,69 @@
+{
+  "additionalProperties": false,
+  "examples": [
+    {
+      "completed": true,
+      "description": "Routes, schemas, and repository wiring done.",
+      "priority": "medium",
+      "title": "Set up FastAPI project"
+    }
+  ],
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "priority": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Priority"
+    },
+    "completed": {
+      "default": false,
+      "title": "Completed",
+      "type": "boolean"
+    },
+    "owner_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Omit to keep the current owner. Admins may reassign; non-admins get 403 if this differs from the existing owner.",
+      "title": "Owner Id"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "TodoUpdate",
+  "type": "object"
+}
