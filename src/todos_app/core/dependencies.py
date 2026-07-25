@@ -8,6 +8,7 @@ from todos_app.domain.auth.access_token_issuer import AccessTokenIssuer
 from todos_app.domain.auth.access_token_verifier import AccessTokenVerifier
 from todos_app.domain.auth.password_hasher import PasswordHasher
 from todos_app.domain.auth.user_auth_cache import UserAuthCache
+from todos_app.domain.auth.user_lookup import UserLookup
 from todos_app.domain.idempotency.store import IdempotencyStore
 from todos_app.domain.todos.repository import TodoRepository
 from todos_app.domain.users.repository import UserRepository
@@ -20,6 +21,7 @@ from todos_app.infrastructure.cache.valkey_user_auth_cache import ValkeyUserAuth
 from todos_app.infrastructure.persistence.database import get_db
 from todos_app.infrastructure.persistence.todos.repository import SqlAlchemyTodoRepository
 from todos_app.infrastructure.persistence.users.repository import SqlAlchemyUserRepository
+from todos_app.infrastructure.persistence.users.user_lookup import UserRepositoryLookup
 
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
@@ -37,6 +39,13 @@ def get_user_repository(db: DbSessionDep) -> UserRepository:
 
 
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
+
+
+def get_user_lookup(repo: UserRepositoryDep) -> UserLookup:
+	return UserRepositoryLookup(repo)
+
+
+UserLookupDep = Annotated[UserLookup, Depends(get_user_lookup)]
 
 
 def get_settings_dep() -> Settings:

@@ -1,15 +1,13 @@
 import pytest
 
 from factories import TEST_ACTOR_ID, TEST_USER_ID, TEST_USER_ID_B
-from todos_app.domain.auth.authorization import (
-	ADMIN_ROLE,
-	AdminRequiredError,
+from todos_app.domain.auth.authorization import ADMIN_ROLE, AdminRequiredError, require_admin
+from todos_app.domain.ids import UNKNOWN_ID
+from todos_app.domain.todos.authorization import (
 	is_update_owner_change_forbidden,
 	list_owner_filter,
-	require_admin,
 	resolve_create_owner_id,
 )
-from todos_app.domain.ids import UNKNOWN_ID
 
 
 pytestmark = pytest.mark.unit
