@@ -54,6 +54,6 @@ if container_wait_for_health "$@"; then
 	container_print_stack_ready
 else
 	echo "Containers started but /health did not respond in time." >&2
-	echo "Check logs: ./scripts/container/logs.sh" >&2
+	echo "Check logs: task logs" >&2
 	exit 1
 fi

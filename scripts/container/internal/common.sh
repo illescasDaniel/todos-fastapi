@@ -145,8 +145,8 @@ container_print_stack_ready() {
 	echo "Stack is up."
 	echo "  API docs: http://localhost:${API_PORT:?set API_PORT in env profile}/docs"
 	echo "  Health:   http://localhost:${API_PORT:?set API_PORT in env profile}/health"
-	echo "  Logs:     ./scripts/container/logs.sh"
-	echo "  Stop:     ./scripts/container/down.sh"
+	echo "  Logs:     task logs"
+	echo "  Stop:     task down"
 }
 
 container_print_deploy_ready() {

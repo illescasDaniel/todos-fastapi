@@ -71,7 +71,7 @@ task path_a_clean   # wipe → build app image → seed → host API
 # or: task path_a   # reuse volumes; stop Path B if needed, then host API
 ```
 
-Host env profile uses `127.0.0.1` for PostgreSQL and Valkey. Scripts generate a gitignored root `.env` for Compose from the profile. Low-level tasks: `task wipe`, `task migrate`, `task seed`, `task start`.
+Host env profile uses `127.0.0.1` for PostgreSQL and Valkey. Scripts generate a gitignored root `.env` for Compose from the profile. See [Local bring-up](#local-bring-up-development-only) for what each `path_*` task runs. Low-level: `task wipe`, `task migrate`, `task seed`, `task start`.
 
 > **OpenAPI UI** — after Path A is up, open `http://127.0.0.1:8000/docs` (or your `api.port` in `config/profiles/local.toml`). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
 
@@ -99,7 +99,20 @@ task path_b_clean   # wipe → up --build → seed
 
 Path B rewrites loopback `POSTGRES_URL` and `VALKEY_URL` to in-network service names inside the container. Host `.env` uses `127.0.0.1`.
 
-Local tasks: `task path_b` / `task path_b_clean`, plus low-level `task up`, `task down`, `task logs` (build still `./scripts/container/build.sh`). Production deploy (Path C): copy [`production.example.toml`](config/profiles/production.example.toml) to `config/profiles/production.toml`, set `ENV_PROFILE=production` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
+When the stack is up: `task logs`, `task down`. Low-level: `task up` (build still `./scripts/container/build.sh`).
+
+### Local bring-up (development only)
+
+`task path_a`, `task path_a_clean`, `task path_b`, and `task path_b_clean` are **local development helpers** (`ENV_PROFILE=local`, `APP_ENV=local`). They may wipe volumes and load demo users (`jane` / `admin`, password `changeme`). **Do not** run wipe, seed, or `path_*_clean` against staging or production.
+
+| Task | What runs inside |
+|------|------------------|
+| `path_a_clean` | `wipe --yes` → compose `build app` → `seed` → `start.sh` (host API, foreground) |
+| `path_a` | `down` (stop Path B; volumes kept) → `start.sh` |
+| `path_b_clean` | `wipe --yes` → `up.sh` (`--build`) → `seed` |
+| `path_b` | `up.sh` only (`--build`, volumes kept) |
+
+**Production / Path C** is separate: app-only Compose via `./scripts/container/deploy.sh`, migrations from the container entrypoint when `DEPLOY_RUN_MIGRATIONS=true`, and `./scripts/container/logs.sh --prod` / `./scripts/container/down.sh --prod`. Copy [`production.example.toml`](config/profiles/production.example.toml) → `config/profiles/production.toml`, set `ENV_PROFILE=production` — see [Deployment — Path C](docs/deployment.md#path-c--app-only-compose-primary).
 
 ## Quality checks (CI)
 
