@@ -3,7 +3,7 @@ from uuid import UUID
 import pytest
 
 from fakes.user_repository import FakeUserRepository
-from todos_app.domain.users.entity import User
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.unit

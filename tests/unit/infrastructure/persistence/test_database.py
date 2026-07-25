@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from todos_app.infrastructure.persistence.database import (
+from todos_app.shared.adapters.persistence.database import (
 	assert_database_url_is_local_only,
 	database_url_is_local_only,
 	database_url_is_postgresql,
@@ -61,7 +61,7 @@ def test_given_missing_asyncpg_module_when_requiring_driver_then_raises_runtime_
 
 	# when
 	with patch(
-		"todos_app.infrastructure.persistence.database.importlib.import_module",
+		"todos_app.shared.adapters.persistence.database.importlib.import_module",
 		side_effect=ImportError("No module named asyncpg"),
 	):
 		with pytest.raises(RuntimeError, match="asyncpg") as exc_info:

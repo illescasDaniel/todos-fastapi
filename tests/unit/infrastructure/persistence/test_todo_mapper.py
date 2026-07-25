@@ -1,9 +1,9 @@
 import pytest
 
 from factories import TEST_TODO_ID, TEST_USER_ID
-from todos_app.domain.todos.entity import Todo
-from todos_app.infrastructure.persistence.todos import mapper
-from todos_app.infrastructure.persistence.todos.orm import TodoModel
+from todos_app.todos.adapters.database import mapper
+from todos_app.todos.adapters.database.orm import TodoModel
+from todos_app.todos.domain.entity import Todo
 
 
 pytestmark = pytest.mark.unit

@@ -3,7 +3,7 @@ from httpx import AsyncClient
 
 from factories import user_signup_payload
 from integration.api.helpers import auth_headers, register_admin_and_login, register_and_login
-from todos_app.domain.ids import UNKNOWN_ID
+from todos_app.shared.ids import UNKNOWN_ID
 
 
 pytestmark = pytest.mark.integration

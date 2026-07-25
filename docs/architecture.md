@@ -1,20 +1,20 @@
 # Architecture
 
-Layered design for ToDo API. Read before structural/feature changes.
+Feature-first hexagonal design for ToDo API. Read before structural/feature changes.
 
 **See also:** [Getting started](getting-started.md) · [Database](database.md) · [Authentication](authentication.md) · [API](api.md) · [Development](development.md)
 
 ## Overview
 
-**Ports-and-adapters** (hexagonal / clean):
+**Ports-and-adapters** (hexagonal / clean), packaged **by feature** (bounded context):
 
-- **Domain** — business meaning; no FastAPI/SQLAlchemy
-- **Application** — use cases; domain + ports; no FastAPI/Pydantic
-- **Infrastructure** — port implementations (DB, APIs, queues)
-- **API** — HTTP + Pydantic at the edge
-- **Core** — logging, `Depends`, exception translation
+- **Domain** (per feature) — business meaning; no FastAPI/SQLAlchemy
+- **Application** (per feature) — use cases + feature errors; domain + ports; no FastAPI/Pydantic
+- **Adapters** (per feature) — inbound `adapters/api`, outbound `adapters/database|cache|security`
+- **Shared** — thin platform kernel (config, logging, DB engine, Valkey client, HTTP error strings)
+- **Runtime** — composition root (`create_app`, exception→HTTP registry)
 
-Dependencies point **inward**.
+Dependencies point **inward** within a feature. Cross-feature: prefer ports (`UserLookup`); HTTP edge may use `CurrentUserDep` from auth.
 
 ### Diagrams
 
@@ -45,11 +45,11 @@ Do not merge into one `models.py`:
 |------|----------|---------|---------|
 | **API schema** | `api/<feature>/schemas.py` | HTTP contract | `TodoCreate`, `TodoResponse` |
 | **Domain entity** | `domain/<feature>/entity.py` | Framework-free data | `Todo` dataclass |
-| **ORM** | `infrastructure/persistence/<feature>/orm.py` | Table mapping | `TodoModel` |
+| **ORM** | `<feature>/adapters/database/orm.py` | Table mapping | `TodoModel` |
 
 Mapping at boundaries:
 
-- **ORM ↔ domain:** `infrastructure/persistence/<feature>/mapper.py`
+- **ORM ↔ domain:** `<feature>/adapters/database/mapper.py`
 - **Domain ↔ API:** router or `api/<feature>/mappers.py`
 
 ### Identifiers (UUID v7)
@@ -82,7 +82,7 @@ class TodoRepository(Protocol):
 Adapters in infrastructure:
 
 ```python
-# infrastructure/persistence/todos/repository.py
+# todos/adapters/database/repository.py
 class SqlAlchemyTodoRepository:
     def __init__(self, db: AsyncSession) -> None: ...
     async def list_page(
@@ -100,7 +100,7 @@ Routes/use cases depend on `TodoRepository`, not `SqlAlchemyTodoRepository`.
 | Piece | Role |
 |-------|------|
 | `application/auth.py` | Login via `UserLookup` port, verify, token |
-| `application/errors.py` | `UserNotFoundError`, `TodoNotFoundError`, etc. |
+| `<feature>/application/errors.py` | Feature exceptions (`UserNotFoundError`, …) |
 | `application/users.py` | User CRUD |
 | `application/todos.py` | Actor-scoped todo get/update/delete |
 
@@ -204,7 +204,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from todos_app.infrastructure.persistence.database import get_db
+from todos_app.shared.adapters.persistence.database import get_db
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
@@ -219,7 +219,7 @@ TodoRepositoryDep = Annotated[TodoRepository, Depends(get_todo_repository)]
 ```python
 from fastapi import Query
 
-from todos_app.core.settings import get_settings
+from todos_app.shared.settings import get_settings
 
 settings = get_settings()
 
@@ -253,14 +253,14 @@ Stacked TOML under [`config/`](../config/):
 
 | Piece | Role |
 |-------|------|
-| [`schema.py`](../src/todos_app/core/config/schema.py) | `EnvSettings` + nested groups; all required |
+| [`schema.py`](../src/todos_app/shared/config/schema.py) | `EnvSettings` + nested groups; all required |
 | [`base.toml`](../config/base.toml) | Defaults; merged every profile |
 | [`profiles/example.toml`](../config/profiles/example.toml) | Local template → `local.toml` |
 | [`profiles/test.toml`](../config/profiles/test.toml) | CI/pytest |
 | [`profiles/production.example.toml`](../config/profiles/production.example.toml) | Prod template |
-| [`loader.py`](../src/todos_app/core/config/loader.py) | `ENV_PROFILE` → merge → `get_env_settings()` |
-| [`flatten.py`](../src/todos_app/core/config/flatten.py) | `api.port` → `API_PORT`, etc. |
-| [`export.py`](../src/todos_app/core/config/export.py) | Dotenv export for shell + Compose |
+| [`loader.py`](../src/todos_app/shared/config/loader.py) | `ENV_PROFILE` → merge → `get_env_settings()` |
+| [`flatten.py`](../src/todos_app/shared/config/flatten.py) | `api.port` → `API_PORT`, etc. |
+| [`export.py`](../src/todos_app/shared/config/export.py) | Dotenv export for shell + Compose |
 
 [`core/settings.py`](../src/todos_app/core/settings.py) re-exports `get_settings()`.
 
@@ -284,7 +284,7 @@ cp config/profiles/example.toml config/profiles/local.toml
 export ENV_PROFILE=local
 ```
 
-Shell scripts and Compose: `python -m todos_app.core.config.export` writes gitignored `.env` via [`load_env.sh`](../scripts/internal/load_env.sh).
+Shell scripts and Compose: `python -m todos_app.shared.config.export` writes gitignored `.env` via [`load_env.sh`](../scripts/internal/load_env.sh).
 
 **Path B:** `postgres.compose_url`, `valkey.compose_url` in TOML; app sets `TODOS_COMPOSE=1` → resolves as `url`. Exports both host and compose URLs.
 
@@ -301,7 +301,7 @@ Login over user persistence + hashing. Protected routes: `Authorization: Bearer`
 | Layer | Piece | Role |
 |-------|-------|------|
 | API | `api/auth/` | `POST /auth/login` |
-| API | `api/todos/`, `api/users/` | `CurrentUserDep`; admin → `require_admin` |
+| API | `todos/adapters/api/`, `users/adapters/api/` | `CurrentUserDep`; admin → `require_admin` |
 | Application | `auth.py`, `users.py`, `todos.py` | Orchestration |
 | Domain | `authenticated_user.py`, `authorization.py` (`require_admin`) | Actor identity, admin gate |
 | Domain | `user_lookup.py` | Login credentials port (`UserCredentials`) |
@@ -329,59 +329,61 @@ PyJWT in `pyproject.toml`. Config: Pydantic `schema.py` (not pydantic-settings d
 ## Package layout
 
 ```text
-src/
-└── todos_app/
-    ├── main.py
-    ├── core/
-    │   ├── config/          # TOML loader, schema, export
-    │   ├── logging.py
-    │   ├── auth.py            # Bearer, get_current_user
-    │   ├── settings.py
-    │   ├── dependencies.py    # *Dep aliases
-    │   ├── http_errors.py
-    │   ├── error_responses.py
-    │   ├── exceptions.py
-    │   └── rate_limiting.py
-    ├── application/
-    │   ├── auth.py
-    │   ├── errors.py
-    │   ├── users.py
-    │   └── todos.py
+src/todos_app/
+├── main.py                      # app = create_app()
+├── runtime/                     # composition root
+│   ├── app.py
+│   └── exceptions.py
+├── shared/                      # platform kernel
+│   ├── config/
+│   ├── settings.py, logging.py, ids.py
+│   ├── http_errors.py, error_responses.py
+│   ├── dependencies.py          # SettingsDep, DbSessionDep
+│   └── adapters/
+│       ├── api/                 # health, openapi helpers, schema export
+│       ├── persistence/         # engine, migrations, seeding
+│       └── cache/               # valkey client
+├── auth/
+│   ├── domain/
+│   ├── application/
+│   └── adapters/api|security|cache/
+├── users/
+│   ├── domain/
+│   ├── application/
+│   └── adapters/api|database/
+├── todos/
+│   ├── domain/                  # includes owner-scope authorization
+│   ├── application/
+│   └── adapters/api|database/
+└── idempotency/                 # platform capability
     ├── domain/
-    │   ├── auth/              # ports, AuthenticatedUser, require_admin, UserLookup
-    │   ├── todos/             # entity, page, repository port, owner-scope policy
-    │   └── users/
-    ├── infrastructure/
-    │   ├── auth/
-    │   ├── cache/
-    │   └── persistence/       # database, migrations, seeding, feature repos
-    └── api/
-        ├── openapi_responses.py
-        ├── auth/, health/, todos/, users/
+    ├── application/
+    └── adapters/api|cache/
 ```
 
-Use cases in `application/`; `api/` maps schemas and delegates.
+Import contracts enforced by `import-linter` in the quality gate.
 
 ## Adding a feature
 
-1. **Domain:** `entity.py`, `repository.py` (Protocol)
-2. **Infrastructure:** `orm.py`, `mapper.py`, `repository.py`
-3. **Dependencies:** `get_*_repository` + `*Dep`
-4. **Application:** use case module; exceptions → `errors.py` + `core/exceptions.py`
-5. **API:** router, schemas, mappers; include in `main.py`
-6. No SQLAlchemy/infra imports in domain, application, or route handlers
+1. **Domain:** `<feature>/domain/` — `entity.py`, `repository.py` (Protocol)
+2. **Adapters:** `<feature>/adapters/database/` — `orm.py`, `mapper.py`, `repository.py`
+3. **Dependencies:** `<feature>/adapters/api/dependencies.py` — `get_*` + `*Dep`
+4. **Application:** `<feature>/application/` — use cases + `errors.py`; register handlers in `runtime/exceptions.py`
+5. **API:** `<feature>/adapters/api/` — router, schemas, mappers; include in `runtime/app.py`
+6. No SQLAlchemy/adapter imports in domain or application
 
 ## Layer rules (checklist)
 
-- [ ] `domain/` imports nothing from outer layers
-- [ ] `application/` no FastAPI/infra imports
-- [ ] Exceptions → HTTP in `core/exceptions.py`
-- [ ] Routes use `*RepositoryDep`, not `AsyncSession`/ORM
+- [ ] Feature `domain/` imports nothing from adapters/application/runtime
+- [ ] Feature `application/` no FastAPI/adapter imports
+- [ ] Exceptions → HTTP in `runtime/exceptions.py`
+- [ ] Routes use `*Dep` from feature `adapters/api/dependencies.py`, not `AsyncSession`/ORM
 - [ ] Async repos; await in routes/use cases
-- [ ] New ports: `Protocol`; adapters under `infrastructure/<kind>/`
-- [ ] Actor scope: explicit `owner_id` from `list_owner_filter` on reads **and** writes
-- [ ] Schemas in `api/`; entities framework-free
-- [ ] DI in `core/dependencies.py`
+- [ ] New ports: `Protocol`; adapters under `<feature>/adapters/<kind>/`
+- [ ] Actor scope: explicit `owner_id` from `todos.domain.authorization.list_owner_filter` on reads **and** writes
+- [ ] Schemas in `<feature>/adapters/api/`; entities framework-free
+- [ ] Cross-feature: ports only (e.g. `UserLookup`); keep `shared/` free of feature imports
+- [ ] `lint-imports` / import-linter contracts still pass
 
 ## Testing
 

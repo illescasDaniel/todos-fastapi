@@ -1,10 +1,10 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from todos_app.domain.todos.entity import Todo
-from todos_app.domain.users.entity import User
-from todos_app.infrastructure.persistence.todos.repository import SqlAlchemyTodoRepository
-from todos_app.infrastructure.persistence.users.repository import SqlAlchemyUserRepository
+from todos_app.todos.adapters.database.repository import SqlAlchemyTodoRepository
+from todos_app.todos.domain.entity import Todo
+from todos_app.users.adapters.database.repository import SqlAlchemyUserRepository
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.integration

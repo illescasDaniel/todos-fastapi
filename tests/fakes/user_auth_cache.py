@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from todos_app.domain.auth.authenticated_user import AuthenticatedUser
+from todos_app.auth.domain.authenticated_user import AuthenticatedUser
 
 
 class FakeUserAuthCache:

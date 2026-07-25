@@ -1,6 +1,6 @@
 import pytest
 
-from todos_app.core.idempotency import (
+from todos_app.idempotency.adapters.api.helpers import (
 	build_scope_key,
 	compute_request_fingerprint,
 	is_idempotent_method,
@@ -8,7 +8,7 @@ from todos_app.core.idempotency import (
 	normalize_query_string,
 	read_idempotency_key,
 )
-from todos_app.domain.ids import JANE_USER_ID
+from todos_app.shared.ids import JANE_USER_ID
 
 
 pytestmark = pytest.mark.unit

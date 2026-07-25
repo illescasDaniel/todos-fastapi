@@ -5,12 +5,12 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from todos_app.core.config.loader import get_env_settings
-from todos_app.infrastructure.persistence.migrations import (
+from todos_app.shared.adapters.persistence.migrations import (
 	alembic_config,
 	downgrade_migrations_async,
 	run_migrations_async,
 )
+from todos_app.shared.config.loader import get_env_settings
 
 
 pytestmark = pytest.mark.integration

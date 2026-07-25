@@ -42,7 +42,7 @@ Construct/call third-party clients after guard:
 | Module | Guard | Runtime import |
 |--------|-------|----------------|
 | [`valkey_client.py`](../src/todos_app/infrastructure/cache/valkey_client.py) | `require_valkey_driver()` | `from valkey.asyncio import Valkey` in `create_valkey_client` |
-| [`database.py`](../src/todos_app/infrastructure/persistence/database.py) | `require_async_db_driver(url)` | `importlib.import_module("asyncpg")` |
+| [`database.py`](../src/todos_app/shared/adapters/persistence/database.py) | `require_async_db_driver(url)` | `importlib.import_module("asyncpg")` |
 
 `valkey_user_auth_cache.py`: `TYPE_CHECKING` only — receives built client.
 

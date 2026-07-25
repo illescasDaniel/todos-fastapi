@@ -8,10 +8,10 @@ from sqlalchemy import func, select
 
 from fakes.idempotency_store import FakeIdempotencyStore
 from integration.api.helpers import auth_headers, register_and_login
-from todos_app.core.idempotency import build_scope_key, compute_request_fingerprint
-from todos_app.core.idempotency_factory import set_idempotency_store_factory
-from todos_app.infrastructure.persistence.database import AsyncSessionLocal
-from todos_app.infrastructure.persistence.todos.orm import TodoModel
+from todos_app.idempotency.adapters.api.factory import set_idempotency_store_factory
+from todos_app.idempotency.adapters.api.helpers import build_scope_key, compute_request_fingerprint
+from todos_app.shared.adapters.persistence.database import AsyncSessionLocal
+from todos_app.todos.adapters.database.orm import TodoModel
 
 
 pytestmark = pytest.mark.integration

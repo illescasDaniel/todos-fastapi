@@ -56,7 +56,7 @@ def load_settings() -> Settings:
 	repo_root = Path(repo_root_raw).resolve()
 	_ensure_src_importable(repo_root)
 
-	from todos_app.core.config.loader import get_env_settings
+	from todos_app.shared.config.loader import get_env_settings
 
 	app_settings = get_env_settings()
 	api_base_url = _validate_api_base_url(

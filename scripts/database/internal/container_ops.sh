@@ -41,7 +41,7 @@ container_ops_run_app() {
 
 container_ops_assert_seed_allowed() {
 	container_ops_run_app python -c "
-from todos_app.infrastructure.persistence.seeding.runner import assert_seed_allowed
+from todos_app.shared.adapters.persistence.seeding.runner import assert_seed_allowed
 assert_seed_allowed()
 print('Confirmed: seeding is allowed for this environment.')
 "

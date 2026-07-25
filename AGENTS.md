@@ -5,19 +5,19 @@
 Before making structural or feature changes, read [docs/architecture.md](docs/architecture.md).
 Follow the layer boundaries, Protocol-based ports, and Depends injection patterns described there.
 
-- Put shared orchestration in `application/`; keep routers thin (parse/map, call use case, map response).
-- Login orchestration lives in `application/auth.py` (credential lookup and token issuance).
-- Register new application/domain exceptions in `core/exceptions.py`; map them from `application/errors.py`. HTTP detail strings live in `core/http_errors.py`.
-- Wire concrete adapters only through `core/dependencies.py` — routes depend on port `*Dep` aliases, not `AsyncSession` or ORM types.
-- For new routes, reuse `OpenAPIResponse.merge_*` helpers from `api/openapi_responses.py` for documented error responses.
-- Request/response mapping belongs in `api/<feature>/mappers.py`, not in routers.
+- Put use cases in `<feature>/application/`; keep routers thin (parse/map, call use case, map response).
+- Login orchestration lives in `auth/application/auth.py` (via `UserLookup` port).
+- Register feature exceptions in `<feature>/application/errors.py`; map them in `runtime/exceptions.py`. HTTP detail strings live in `shared/http_errors.py`.
+- Wire concrete adapters in `<feature>/adapters/api/dependencies.py` — routes depend on port `*Dep` aliases, not `AsyncSession` or ORM types.
+- For new routes, reuse `OpenAPIResponse.merge_*` helpers from `shared/adapters/api/openapi_responses.py` for documented error responses.
+- Request/response mapping belongs in `<feature>/adapters/api/mappers.py`, not in routers.
 
 ## Documentation map
 
 | Topic | Doc |
 |-------|-----|
 | Layer boundaries, DI, testing layout | [docs/architecture.md](docs/architecture.md) |
-| Env profiles (`ENV_PROFILE`, `config/`, `src/todos_app/core/config/`) | [docs/architecture.md#configuration-and-secrets](docs/architecture.md#configuration-and-secrets) |
+| Env profiles (`ENV_PROFILE`, `config/`, `src/todos_app/shared/config/`) | [docs/architecture.md#configuration-and-secrets](docs/architecture.md#configuration-and-secrets) |
 | Schema, migrations, seed/wipe | [docs/database.md](docs/database.md) |
 | JWT login, roles, route protection | [docs/authentication.md](docs/authentication.md) |
 | Local setup, venv, Podman Compose | [docs/getting-started.md](docs/getting-started.md) |
@@ -57,16 +57,16 @@ When you change **HTTP routes**, **request/response shapes**, or **repo scripts*
 | Change | Update |
 |--------|--------|
 | New/changed route or query param | Matching tool in `mcp/todos-backend/src/todos_mcp/tools/`; local gate refreshes [`.cursor/openapi.snapshot.json`](.cursor/openapi.snapshot.json) (or `./scripts/mcp/export_openapi.sh`) |
-| New/changed API Pydantic model | Add to `api/schema_export/registry.py`; re-run `./scripts/export_json_schemas.sh` and commit `schemas/json/` |
+| New/changed API Pydantic model | Add to `shared/adapters/api/schema_export/registry.py`; re-run `./scripts/export_json_schemas.sh` and commit `schemas/json/` |
 | Script moved/renamed | Paths in `tools/lifecycle.py` and `scripts_runner.py` |
-| Env/ports loading | `src/todos_app/core/config/` (`loader.py`, `export.py`) + `config/profiles/`; MCP `config.py` adds `repo_root/src` to path; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
+| Env/ports loading | `src/todos_app/shared/config/` (`loader.py`, `export.py`) + `config/profiles/`; MCP `config.py` adds `repo_root/src` to path; subprocess allowlist in `scripts_runner.py` if scripts need new vars |
 | Tool behavior/docs | Docstrings on `@mcp.tool()` handlers; [`docs/mcp.md`](docs/mcp.md) and [`mcp/todos-backend/README.md`](mcp/todos-backend/README.md) |
 
 Run `./scripts/quality/checks.sh` — MCP tests are part of the gate. `.cursor/mcp.json` rarely changes (only interpreter path or server `env` overrides).
 
 ## Package layout (`__init__.py`)
 
-This project uses **implicit namespace packages** (PEP 420): layer folders such as `application/`, `domain/`, `api/`, and `infrastructure/` do **not** need `__init__.py` files for imports to work.
+This project uses **implicit namespace packages** (PEP 420): feature folders such as `auth/`, `users/`, `todos/`, `shared/`, and layer folders under them do **not** need `__init__.py` files for imports to work.
 
 - **Do not** add empty or boilerplate `__init__.py` files when creating new modules or directories under `src/todos_app/`.
 - **Do not** add `__init__.py` only to re-export symbols; import from the concrete module instead (for example `from todos_app.application import users`, not package-level `__all__` in `__init__.py`).
@@ -160,7 +160,7 @@ See [docs/development.md#stack-verification](docs/development.md#stack-verificat
 
 ## Schema changes (Alembic)
 
-ORM models live under `src/todos_app/infrastructure/persistence/<feature>/orm.py`. Prefer MCP `db_migrate` for upgrades; use the `alembic-migrate` skill as fallback:
+ORM models live under `src/todos_app/<feature>/adapters/database/orm.py`. Prefer MCP `db_migrate` for upgrades; use the `alembic-migrate` skill as fallback:
 
 1. Edit ORM models.
 2. `./scripts/database/migrate.sh revision -m "describe change"` — **review** autogenerate output in `alembic/versions/` (host `.venv`; no MCP wrapper for autogenerate).

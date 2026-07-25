@@ -3,8 +3,8 @@ from collections.abc import AsyncIterator
 import pytest
 from sqlalchemy import text
 
-from todos_app.core.rate_limiting import limiter
-from todos_app.infrastructure.persistence.database import engine
+from todos_app.shared.adapters.persistence.database import engine
+from todos_app.shared.rate_limiting import limiter
 
 
 @pytest.fixture(autouse=True)

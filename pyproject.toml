@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
 	"basedpyright>=1.29",
+	"import-linter>=2.1",
 	"msgpack>=1.2.1",
 	"pip-audit>=2.7",
 	"pytest>=8.0",
@@ -61,7 +62,7 @@ markers = [
 
 [tool.coverage.run]
 source = ["todos_app"]
-omit = ["*/infrastructure/persistence/seeding/*", "alembic/env.py"]
+omit = ["*/shared/adapters/persistence/seeding/*", "alembic/env.py"]
 
 [tool.coverage.report]
 show_missing = true
@@ -95,16 +96,17 @@ lines-after-imports = 2
 "mcp/todos-backend/tests/**" = ["S101", "S105", "S106", "S108"]
 "scripts/**" = ["S603", "S607"]
 # FastAPI uses Query/Depends in default args — B008 is a false positive in routers
-"src/todos_app/api/todos/router.py" = ["B008"]
+"src/todos_app/todos/adapters/api/router.py" = ["B008"]
 # assert isinstance() in exception handlers is a deliberate type narrowing pattern
-"src/todos_app/core/exceptions.py" = ["S101"]
+"src/todos_app/runtime/exceptions.py" = ["S101"]
+"src/todos_app/runtime/app.py" = ["S101"]
 # String constants named INVALID_TOKEN / token_type are not passwords
-"src/todos_app/core/http_errors.py" = ["S105"]
-"src/todos_app/api/auth/schemas.py" = ["S105"]
+"src/todos_app/shared/http_errors.py" = ["S105"]
+"src/todos_app/auth/adapters/api/schemas.py" = ["S105"]
 # main.py intentionally binds to 0.0.0.0 for container deployments; assert callable is a type guard
 "src/todos_app/main.py" = ["S101", "S104", "E501"]
 # Pre-existing long function signature; cannot be broken up without changing the API
-"src/todos_app/api/users/router.py" = ["E501"]
+"src/todos_app/users/adapters/api/router.py" = ["E501"]
 # Profile TOML intentionally contains placeholder secrets (example/test templates)
 "config/profiles/**" = ["S105", "S106"]
 
@@ -120,4 +122,74 @@ reportMissingTypeStubs = false
 executionEnvironments = [
 	{ root = "mcp/todos-backend/src/todos_mcp/tools", reportUnusedFunction = false },
 	{ root = "src" },
+]
+
+# --- Import contracts (feature-first boundaries) ---
+[tool.importlinter]
+root_package = "todos_app"
+
+[[tool.importlinter.contracts]]
+name = "Todos does not import users"
+type = "forbidden"
+source_modules = ["todos_app.todos"]
+forbidden_modules = ["todos_app.users"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Users does not import todos"
+type = "forbidden"
+source_modules = ["todos_app.users"]
+forbidden_modules = ["todos_app.todos"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Auth domain/application do not import users"
+type = "forbidden"
+source_modules = ["todos_app.auth.domain", "todos_app.auth.application"]
+forbidden_modules = ["todos_app.users"]
+
+[[tool.importlinter.contracts]]
+name = "Shared kernel does not import features or runtime"
+type = "forbidden"
+source_modules = [
+	"todos_app.shared.config",
+	"todos_app.shared.settings",
+	"todos_app.shared.logging",
+	"todos_app.shared.ids",
+	"todos_app.shared.http_errors",
+	"todos_app.shared.error_responses",
+	"todos_app.shared.rate_limiting",
+	"todos_app.shared.dependencies",
+	"todos_app.shared.adapters.persistence",
+	"todos_app.shared.adapters.cache",
+	"todos_app.shared.adapters.api.health",
+	"todos_app.shared.adapters.api.openapi_responses",
+]
+forbidden_modules = [
+	"todos_app.auth",
+	"todos_app.users",
+	"todos_app.todos",
+	"todos_app.idempotency",
+	"todos_app.runtime",
+]
+
+[[tool.importlinter.contracts]]
+name = "Feature domains do not import adapters, application, or runtime"
+type = "forbidden"
+source_modules = [
+	"todos_app.auth.domain",
+	"todos_app.users.domain",
+	"todos_app.todos.domain",
+	"todos_app.idempotency.domain",
+]
+forbidden_modules = [
+	"todos_app.auth.adapters",
+	"todos_app.auth.application",
+	"todos_app.users.adapters",
+	"todos_app.users.application",
+	"todos_app.todos.adapters",
+	"todos_app.todos.application",
+	"todos_app.idempotency.adapters",
+	"todos_app.idempotency.application",
+	"todos_app.runtime",
 ]

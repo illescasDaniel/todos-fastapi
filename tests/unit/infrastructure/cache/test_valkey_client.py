@@ -1,6 +1,6 @@
 import pytest
 
-from todos_app.infrastructure.cache.valkey_client import require_valkey_driver
+from todos_app.shared.adapters.cache.valkey_client import require_valkey_driver
 
 
 pytestmark = pytest.mark.unit

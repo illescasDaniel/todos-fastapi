@@ -1,4 +1,4 @@
-from todos_app.domain.idempotency.record import IdempotencyRecord
+from todos_app.idempotency.domain.record import IdempotencyRecord
 
 
 class FakeIdempotencyStore:

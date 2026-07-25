@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from todos_app.api.todos.schemas import TodoCreate, TodoPatch, TodoUpdate
+from todos_app.todos.adapters.api.schemas import TodoCreate, TodoPatch, TodoUpdate
 
 
 pytestmark = pytest.mark.unit

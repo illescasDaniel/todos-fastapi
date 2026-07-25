@@ -3,10 +3,10 @@ import pytest
 from factories import TEST_ADMIN_ID, TEST_USER_ID
 from fakes.user_auth_cache import FakeUserAuthCache
 from fakes.user_repository import FakeUserRepository
-from todos_app.application import users as user_use_cases
-from todos_app.application.errors import LastAdminError, UserNotFoundError
-from todos_app.domain.ids import UNKNOWN_ID
-from todos_app.domain.users.entity import User
+from todos_app.shared.ids import UNKNOWN_ID
+from todos_app.users.application import users as user_use_cases
+from todos_app.users.application.errors import LastAdminError, UserNotFoundError
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.unit

@@ -1,16 +1,16 @@
 import pytest
 
 from factories import TEST_USER_ID
-from todos_app.api.users import mappers
-from todos_app.api.users.schemas import (
+from todos_app.users.adapters.api import mappers
+from todos_app.users.adapters.api.schemas import (
 	UserAdminPatch,
 	UserAdminReplace,
 	UserSelfPatch,
 	UserSelfReplace,
 	UserSignup,
 )
-from todos_app.application.errors import CurrentPasswordInvalidError, CurrentPasswordRequiredError
-from todos_app.domain.users.entity import User
+from todos_app.users.application.errors import CurrentPasswordInvalidError, CurrentPasswordRequiredError
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.unit

@@ -1,0 +1,36 @@
+from fastapi import APIRouter, Request
+
+from todos_app.auth.adapters.api.dependencies import AccessTokenIssuerDep, PasswordHasherDep, UserLookupDep
+from todos_app.auth.adapters.api.schemas import LoginRequest, TokenResponse
+from todos_app.auth.application import auth as auth_use_cases
+from todos_app.shared.adapters.api.openapi_responses import OpenAPIResponse
+from todos_app.shared.rate_limiting import limiter
+from todos_app.shared.settings import get_settings
+
+
+settings = get_settings()
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.post(
+	"/login",
+	response_model=TokenResponse,
+	responses=OpenAPIResponse.merge(OpenAPIResponse.INVALID_CREDENTIALS),
+)
+@limiter.limit(f"{settings.api.rate_limit_auth_per_minute}/minute")  # pyright: ignore[reportUntypedFunctionDecorator,reportUnknownMemberType]
+async def login(
+	request: Request,
+	body: LoginRequest,
+	users: UserLookupDep,
+	hasher: PasswordHasherDep,
+	issuer: AccessTokenIssuerDep,
+) -> TokenResponse:
+	access_token = await auth_use_cases.authenticate(
+		users=users,
+		hasher=hasher,
+		issuer=issuer,
+		username=body.username,
+		password=body.password,
+	)
+	return TokenResponse(access_token=access_token)

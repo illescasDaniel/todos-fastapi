@@ -3,14 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from todos_app.api.schema_export.export import (
+from todos_app.shared.adapters.api.schema_export.export import (
 	build_bundle_schema,
 	build_index_payload,
 	export_model_schema,
 	export_public_schemas,
 )
-from todos_app.api.schema_export.registry import PUBLIC_API_SCHEMAS
-from todos_app.api.todos.schemas import TodoCreate
+from todos_app.shared.adapters.api.schema_export.registry import PUBLIC_API_SCHEMAS
+from todos_app.todos.adapters.api.schemas import TodoCreate
 
 
 pytestmark = pytest.mark.unit

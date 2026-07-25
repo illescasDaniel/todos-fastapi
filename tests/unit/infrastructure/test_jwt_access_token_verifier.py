@@ -3,9 +3,9 @@ import pytest
 
 from env_helpers import make_env_settings
 from factories import TEST_USER_ID
-from todos_app.domain.ids import UNKNOWN_ID
-from todos_app.infrastructure.auth.jwt_access_token_issuer import JwtAccessTokenIssuer
-from todos_app.infrastructure.auth.jwt_access_token_verifier import JwtAccessTokenVerifier
+from todos_app.auth.adapters.security.jwt_access_token_issuer import JwtAccessTokenIssuer
+from todos_app.auth.adapters.security.jwt_access_token_verifier import JwtAccessTokenVerifier
+from todos_app.shared.ids import UNKNOWN_ID
 
 
 pytestmark = pytest.mark.unit

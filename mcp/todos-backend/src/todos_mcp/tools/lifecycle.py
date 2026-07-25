@@ -16,7 +16,7 @@ _DESTRUCTIVE_DISABLED = {"error": ("Destructive operations are disabled. Set MCP
 
 
 def _destructive_allowed() -> bool:
-	from todos_app.core.config.loader import get_env_settings
+	from todos_app.shared.config.loader import get_env_settings
 
 	return get_env_settings().mcp.allow_destructive
 

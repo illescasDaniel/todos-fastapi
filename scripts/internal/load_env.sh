@@ -28,7 +28,7 @@ env_apply_profile() {
 	env_require_profile
 	env_require_venv
 	PYTHONPATH="${PROJECT_ROOT}/src" \
-		"${PROJECT_ROOT}/.venv/bin/python" -m todos_app.core.config.export >"${PROJECT_ROOT}/.env"
+		"${PROJECT_ROOT}/.venv/bin/python" -m todos_app.shared.config.export >"${PROJECT_ROOT}/.env"
 	set -a
 	# shellcheck disable=SC1091
 	source "${PROJECT_ROOT}/.env"

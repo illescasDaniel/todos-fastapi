@@ -1,13 +1,13 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from todos_app.core.error_responses import (
+from todos_app.shared.error_responses import (
 	ValidationErrorDetail,
 	database_http_exception,
 	database_validation_error_detail,
 	is_duplicate_user_violation,
 )
-from todos_app.core.http_errors import DATABASE_CONSTRAINT_VIOLATION, DUPLICATE_USER
+from todos_app.shared.http_errors import DATABASE_CONSTRAINT_VIOLATION, DUPLICATE_USER
 
 
 pytestmark = pytest.mark.unit

@@ -114,12 +114,12 @@ verify_run_seeding() {
 	# shellcheck disable=SC1091
 	source "$PROJECT_ROOT/.venv/bin/activate"
 	PYTHONPATH="${PROJECT_ROOT}/src" python -c "
-from todos_app.core.config.loader import clear_env_settings_cache
-from todos_app.infrastructure.persistence.seeding.runner import assert_seed_allowed
+from todos_app.shared.config.loader import clear_env_settings_cache
+from todos_app.shared.adapters.persistence.seeding.runner import assert_seed_allowed
 clear_env_settings_cache()
 assert_seed_allowed()
 "
-	PYTHONPATH="${PROJECT_ROOT}/src" python -m todos_app.infrastructure.persistence.seeding
+	PYTHONPATH="${PROJECT_ROOT}/src" python -m todos_app.shared.adapters.persistence.seeding
 }
 
 verify_run_alembic_upgrade() {

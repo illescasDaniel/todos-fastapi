@@ -1,9 +1,9 @@
 import pytest
 
 from factories import TEST_ACTOR_ID, TEST_USER_ID, TEST_USER_ID_B
-from todos_app.domain.auth.authorization import ADMIN_ROLE, AdminRequiredError, require_admin
-from todos_app.domain.ids import UNKNOWN_ID
-from todos_app.domain.todos.authorization import (
+from todos_app.auth.domain.authorization import ADMIN_ROLE, AdminRequiredError, require_admin
+from todos_app.shared.ids import UNKNOWN_ID
+from todos_app.todos.domain.authorization import (
 	is_update_owner_change_forbidden,
 	list_owner_filter,
 	resolve_create_owner_id,

@@ -6,9 +6,9 @@ from httpx import AsyncClient
 
 from factories import user_signup_payload
 from fakes.fast_password_hasher import get_test_password_hasher
-from todos_app.domain.users.entity import User
-from todos_app.infrastructure.persistence.database import AsyncSessionLocal
-from todos_app.infrastructure.persistence.users.repository import SqlAlchemyUserRepository
+from todos_app.shared.adapters.persistence.database import AsyncSessionLocal
+from todos_app.users.adapters.database.repository import SqlAlchemyUserRepository
+from todos_app.users.domain.entity import User
 
 
 _TEST_PASSWORD_HASHER = get_test_password_hasher()
