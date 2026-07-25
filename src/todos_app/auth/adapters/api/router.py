@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 
 from todos_app.auth.adapters.api.dependencies import AccessTokenIssuerDep, PasswordHasherDep, UserLookupDep
 from todos_app.auth.adapters.api.schemas import LoginRequest, TokenResponse
-from todos_app.auth.application import auth as auth_use_cases
+from todos_app.auth.application.authenticate import authenticate
 from todos_app.shared.adapters.api.openapi_responses import OpenAPIResponse
 from todos_app.shared.rate_limiting import limiter
 from todos_app.shared.settings import get_settings
@@ -26,7 +26,7 @@ async def login(
 	hasher: PasswordHasherDep,
 	issuer: AccessTokenIssuerDep,
 ) -> TokenResponse:
-	access_token = await auth_use_cases.authenticate(
+	access_token = await authenticate(
 		users=users,
 		hasher=hasher,
 		issuer=issuer,

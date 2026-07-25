@@ -8,7 +8,11 @@ from todos_app.shared.settings import get_settings
 from todos_app.todos.adapters.api import mappers
 from todos_app.todos.adapters.api.dependencies import TodoRepositoryDep
 from todos_app.todos.adapters.api.schemas import TodoCreate, TodoListResponse, TodoPatch, TodoResponse, TodoUpdate
-from todos_app.todos.application import todos as todo_use_cases
+from todos_app.todos.application.create_todo import create_todo_for_actor
+from todos_app.todos.application.delete_todo import delete_todo_for_actor
+from todos_app.todos.application.get_todo import get_todo_for_actor
+from todos_app.todos.application.list_todos import list_todos_for_actor
+from todos_app.todos.application.update_todo import update_todo_for_actor
 
 
 settings = get_settings()
@@ -35,7 +39,7 @@ async def list_todos(
 		description="Maximum number of todos to return.",
 	),
 ) -> TodoListResponse:
-	page = await todo_use_cases.list_todos_for_actor(
+	page = await list_todos_for_actor(
 		repo,
 		last_id=last_id,
 		limit=limit,
@@ -59,7 +63,7 @@ async def get_todo(
 	repo: TodoRepositoryDep,
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
-	todo = await todo_use_cases.get_todo_for_actor(
+	todo = await get_todo_for_actor(
 		repo,
 		todo_id,
 		actor_id=current_user.user_id,
@@ -79,7 +83,7 @@ async def create_todo(
 	repo: TodoRepositoryDep,
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
-	created_todo = await todo_use_cases.create_todo_for_actor(
+	created_todo = await create_todo_for_actor(
 		repo,
 		mappers.create_to_entity(todo),
 		actor_id=current_user.user_id,
@@ -103,7 +107,7 @@ async def update_todo(
 	repo: TodoRepositoryDep,
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
-	updated_todo = await todo_use_cases.update_todo_for_actor(
+	updated_todo = await update_todo_for_actor(
 		repo,
 		todo_id,
 		lambda _existing, owner_id: mappers.update_to_entity(todo, todo_id, owner_id),
@@ -129,7 +133,7 @@ async def patch_todo(
 	current_user: CurrentUserDep,
 ) -> TodoResponse:
 	fields = mappers.patch_fields(todo)
-	updated_todo = await todo_use_cases.update_todo_for_actor(
+	updated_todo = await update_todo_for_actor(
 		repo,
 		todo_id,
 		lambda existing, owner_id: mappers.apply_todo_patch(existing, fields, owner_id),
@@ -146,7 +150,7 @@ async def patch_todo(
 	responses=OpenAPIResponse.merge_authenticated_write(OpenAPIResponse.TODO_NOT_IN_ACTOR_SCOPE),
 )
 async def delete_todo(todo_id: UUID, repo: TodoRepositoryDep, current_user: CurrentUserDep) -> None:
-	await todo_use_cases.delete_todo_for_actor(
+	await delete_todo_for_actor(
 		repo,
 		todo_id,
 		actor_id=current_user.user_id,

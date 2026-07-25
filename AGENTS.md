@@ -122,11 +122,11 @@ When adding or changing behavior, place tests by layer:
 
 | Change | Location |
 |--------|----------|
-| Domain rules (e.g. authorization) | `tests/unit/domain/` |
-| Use cases | `tests/unit/application/` with fakes from `tests/fakes/` |
-| API mappers | `tests/unit/api/` |
-| Repository adapters | `tests/integration/persistence/` |
-| HTTP routes | `tests/integration/api/` — reuse `tests/factories.py` and `integration/api/helpers.py` |
+| Domain rules (e.g. authorization) | `tests/unit/<feature>/domain/` |
+| Use cases | `tests/unit/<feature>/application/` with fakes from `tests/fakes/` |
+| API mappers | `tests/unit/<feature>/adapters/api/` |
+| Repository adapters | `tests/integration/<feature>/persistence/` |
+| HTTP routes | `tests/integration/<feature>/api/` — reuse `tests/factories.py` and `integration/api/helpers.py` |
 
 - Set `pytestmark = pytest.mark.unit` or `pytest.mark.integration` on **every** test module.
 - Tests use a PostgreSQL test database from `tests/conftest.py` via Alembic `upgrade head` — they do **not** use Compose volumes.

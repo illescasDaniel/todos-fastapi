@@ -393,27 +393,32 @@ Pytest in **`tests/`** (outside `src/`). Every module: `pytestmark = pytest.mark
 
 ```text
 tests/
-├── conftest.py              # DB, FakeUserAuthCache, httpx client
+├── conftest.py
 ├── factories.py
-├── fakes/                   # in-memory repos + cache
+├── fakes/
 ├── unit/
-│   ├── domain/
-│   ├── application/
-│   ├── api/
-│   ├── core/
-│   └── infrastructure/
+│   ├── auth/
+│   ├── users/
+│   ├── todos/
+│   ├── idempotency/
+│   └── shared/
 └── integration/
-    ├── conftest.py          # truncate users/todos per test
-    ├── persistence/
-    └── api/
+    ├── conftest.py          # httpx client + truncate users/todos
+    ├── api/                 # shared helpers (login, auth headers)
+    ├── auth/
+    ├── users/
+    ├── todos/
+    ├── idempotency/
+    └── shared/
 ```
 
 | Path | Marker | Purpose |
 |------|--------|---------|
-| `unit/` | `unit` | Domain, use cases + fakes, mappers, core, infra helpers |
-| `integration/` | `integration` | SQLAlchemy repos + HTTP via `httpx` |
+| `unit/<feature>/` | `unit` | Domain, use cases + fakes, adapters |
+| `unit/shared/` | `unit` | Config, platform helpers |
+| `integration/<feature>/` | `integration` | HTTP routes + SQLAlchemy repos |
 
-Unit tests: `FakeTodoRepository`, `FakeUserRepository`, `FakeUserAuthCache`. Integration API: `register_and_login`, `factories.py`.
+Unit tests: `FakeTodoRepository`, `FakeUserRepository`, `FakeUserAuthCache`. Integration API: `register_and_login` in [`integration/api/helpers.py`](../tests/integration/api/helpers.py).
 
 ### Fixtures ([`conftest.py`](../tests/conftest.py))
 
@@ -422,7 +427,7 @@ Unit tests: `FakeTodoRepository`, `FakeUserRepository`, `FakeUserAuthCache`. Int
 - `db_session` — per-test session + rollback
 - `client` — `httpx.AsyncClient` (module-scoped in `integration/api/`)
 
-Integration autouse: delete `users`/`todos` before each test ([`integration/conftest.py`](../tests/integration/conftest.py)).
+Integration autouse + module `client`: [`integration/conftest.py`](../tests/integration/conftest.py).
 
 Env: `ENV_PROFILE=test` before importing `todos_app`.
 

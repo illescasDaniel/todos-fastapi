@@ -18,7 +18,11 @@ from todos_app.users.adapters.api.schemas import (
 	UserSelfReplace,
 	UserSignup,
 )
-from todos_app.users.application import users as user_use_cases
+from todos_app.users.application.create_user import create_user as create_user_use_case
+from todos_app.users.application.deactivate_user import deactivate_user
+from todos_app.users.application.get_user import get_user_by_id
+from todos_app.users.application.hard_delete_user import hard_delete_user
+from todos_app.users.application.update_user import update_user
 
 
 settings = get_settings()
@@ -36,7 +40,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def create_user(
 	request: Request, user: UserSignup, repo: UserRepositoryDep, hasher: PasswordHasherDep
 ) -> UserResponse:
-	created_user = await user_use_cases.create_user(
+	created_user = await create_user_use_case(
 		mappers.signup_to_entity(user, hasher),
 		repo=repo,
 	)
@@ -49,7 +53,7 @@ async def create_user(
 	responses=OpenAPIResponse.merge_authenticated_read(OpenAPIResponse.USER_NOT_FOUND),
 )
 async def get_me(repo: UserRepositoryDep, current_user: CurrentUserDep) -> UserResponse:
-	user = await user_use_cases.get_user_by_id(repo, current_user.user_id)
+	user = await get_user_by_id(repo, current_user.user_id)
 	return mappers.to_response(user)
 
 
@@ -65,7 +69,7 @@ async def replace_me(
 	current_user: CurrentUserDep,
 	auth_cache: UserAuthCacheDep,
 ) -> UserResponse:
-	user = await user_use_cases.update_user(
+	user = await update_user(
 		current_user.user_id,
 		lambda existing: mappers.apply_user_self_replace(existing, body, hasher),
 		repo=repo,
@@ -87,7 +91,7 @@ async def patch_me(
 	auth_cache: UserAuthCacheDep,
 ) -> UserResponse:
 	fields = mappers.self_patch_fields(body)
-	user = await user_use_cases.update_user(
+	user = await update_user(
 		current_user.user_id,
 		lambda existing: mappers.apply_user_patch(existing, fields, hasher),
 		repo=repo,
@@ -110,7 +114,7 @@ async def replace_user(
 	auth_cache: UserAuthCacheDep,
 ) -> UserResponse:
 	require_admin(current_user.role)
-	user = await user_use_cases.update_user(
+	user = await update_user(
 		user_id,
 		lambda existing: mappers.apply_user_admin_replace(existing, body, hasher),
 		repo=repo,
@@ -134,7 +138,7 @@ async def patch_user(
 ) -> UserResponse:
 	require_admin(current_user.role)
 	fields = mappers.admin_patch_fields(body)
-	user = await user_use_cases.update_user(
+	user = await update_user(
 		user_id,
 		lambda existing: mappers.apply_user_patch(existing, fields, hasher),
 		repo=repo,
@@ -160,6 +164,6 @@ async def delete_user(
 ) -> None:
 	require_admin(current_user.role)
 	if hard:
-		await user_use_cases.hard_delete_user(user_id, repo=repo, auth_cache=auth_cache)
+		await hard_delete_user(user_id, repo=repo, auth_cache=auth_cache)
 	else:
-		await user_use_cases.deactivate_user(user_id, repo=repo, auth_cache=auth_cache)
+		await deactivate_user(user_id, repo=repo, auth_cache=auth_cache)
