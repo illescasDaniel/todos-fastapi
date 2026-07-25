@@ -26,3 +26,11 @@ class CurrentPasswordInvalidError(Exception):
 
 class LastAdminError(Exception):
 	pass
+
+
+class IdempotencyKeyMismatchError(Exception):
+	pass
+
+
+class IdempotencyRequestInProgressError(Exception):
+	pass

@@ -8,12 +8,14 @@ from todos_app.domain.auth.access_token_issuer import AccessTokenIssuer
 from todos_app.domain.auth.access_token_verifier import AccessTokenVerifier
 from todos_app.domain.auth.password_hasher import PasswordHasher
 from todos_app.domain.auth.user_auth_cache import UserAuthCache
+from todos_app.domain.idempotency.store import IdempotencyStore
 from todos_app.domain.todos.repository import TodoRepository
 from todos_app.domain.users.repository import UserRepository
 from todos_app.infrastructure.auth.argon2_password_hasher import Argon2PasswordHasher
 from todos_app.infrastructure.auth.jwt_access_token_issuer import JwtAccessTokenIssuer
 from todos_app.infrastructure.auth.jwt_access_token_verifier import JwtAccessTokenVerifier
 from todos_app.infrastructure.cache.valkey_client import create_valkey_client
+from todos_app.infrastructure.cache.valkey_idempotency_store import ValkeyIdempotencyStore
 from todos_app.infrastructure.cache.valkey_user_auth_cache import ValkeyUserAuthCache
 from todos_app.infrastructure.persistence.database import get_db
 from todos_app.infrastructure.persistence.todos.repository import SqlAlchemyTodoRepository
@@ -70,3 +72,10 @@ def get_user_auth_cache(settings: SettingsDep) -> UserAuthCache:
 
 
 UserAuthCacheDep = Annotated[UserAuthCache, Depends(get_user_auth_cache)]
+
+
+def get_idempotency_store(settings: SettingsDep) -> IdempotencyStore:
+	return ValkeyIdempotencyStore(create_valkey_client(settings.valkey.url))
+
+
+IdempotencyStoreDep = Annotated[IdempotencyStore, Depends(get_idempotency_store)]

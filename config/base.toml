@@ -49,3 +49,8 @@ allow_remote_api = false
 
 [deploy]
 run_migrations = true
+
+[idempotency]
+enabled = true
+ttl_seconds = 86400
+max_key_length = 255

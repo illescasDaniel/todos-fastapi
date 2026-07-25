@@ -9,6 +9,7 @@ from todos_app.core.config.schema import (
 	ComposeSettings,
 	DeploySettings,
 	EnvSettings,
+	IdempotencySettings,
 	JwtSettings,
 	McpSettings,
 	PostgresSettings,
@@ -95,6 +96,7 @@ def _default_env_settings() -> EnvSettings:
 			allow_remote_api=False,
 		),
 		deploy=DeploySettings(run_migrations=True),
+		idempotency=IdempotencySettings(enabled=True, ttl_seconds=86400, max_key_length=255),
 	)
 
 

@@ -171,6 +171,18 @@ Valkey **required** for auth identity cache.
 
 Port: [`domain/auth/user_auth_cache.py`](../src/todos_app/domain/auth/user_auth_cache.py). Wired via `UserAuthCacheDep`; `get_current_user` cache-aside; invalidation on user mutations.
 
+**Idempotency** (optional `Idempotency-Key` on mutating routes):
+
+| Piece | Role |
+|-------|------|
+| `domain/idempotency/store.py` | `IdempotencyStore` port |
+| `idempotency_codec.py` | Record JSON + base64 body |
+| `valkey_idempotency_store.py` | Valkey adapter |
+| `core/idempotency_middleware.py` | Fingerprint, scope, replay |
+| `application/idempotency.py` | begin / complete / release |
+
+Scoped keys: `idempotency:{user_id}:{key}` (authenticated) or `idempotency:anon:{key}` (`POST /users`). Replay window from `[idempotency].ttl_seconds`. Clients should send **UUID v7** values — one per logical mutation, reused only on retries of the same request ([API — Idempotency](api.md#idempotency)). Tests use `FakeIdempotencyStore` via `set_idempotency_store_factory`.
+
 Tests: `FakeUserAuthCache` ([`tests/fakes/`](../../tests/fakes/)), autouse in conftest.
 
 Import style: lazy driver in `valkey_client.py`; `TYPE_CHECKING` in `valkey_user_auth_cache.py`. [Development — type-only imports](development.md#type-only-imports-and-lazy-driver-loading).

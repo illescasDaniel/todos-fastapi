@@ -6,6 +6,8 @@ from starlette.responses import Response
 from todos_app.application.errors import (
 	CurrentPasswordInvalidError,
 	CurrentPasswordRequiredError,
+	IdempotencyKeyMismatchError,
+	IdempotencyRequestInProgressError,
 	InvalidCredentialsError,
 	LastAdminError,
 	TodoNotFoundError,
@@ -25,6 +27,8 @@ from todos_app.core.http_errors import (
 	DATABASE_ERROR,
 	DUPLICATE_USER,
 	FORBIDDEN,
+	IDEMPOTENCY_KEY_MISMATCH,
+	IDEMPOTENCY_REQUEST_IN_PROGRESS,
 	INVALID_CREDENTIALS,
 	LAST_ADMIN,
 	TODO_NOT_FOUND,
@@ -128,6 +132,18 @@ async def last_admin_handler(request: Request, exc: Exception) -> Response:
 	return await http_exception_handler(request, http_exc)
 
 
+async def idempotency_key_mismatch_handler(request: Request, exc: Exception) -> Response:
+	assert isinstance(exc, IdempotencyKeyMismatchError)
+	http_exc = HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=IDEMPOTENCY_KEY_MISMATCH)
+	return await http_exception_handler(request, http_exc)
+
+
+async def idempotency_request_in_progress_handler(request: Request, exc: Exception) -> Response:
+	assert isinstance(exc, IdempotencyRequestInProgressError)
+	http_exc = HTTPException(status_code=status.HTTP_409_CONFLICT, detail=IDEMPOTENCY_REQUEST_IN_PROGRESS)
+	return await http_exception_handler(request, http_exc)
+
+
 def register_exception_handlers(app: FastAPI) -> None:
 	app.add_exception_handler(IntegrityError, integrity_error_handler)
 	app.add_exception_handler(SQLAlchemyError, sqlalchemy_error_handler)
@@ -139,3 +155,5 @@ def register_exception_handlers(app: FastAPI) -> None:
 	app.add_exception_handler(CurrentPasswordRequiredError, current_password_required_handler)
 	app.add_exception_handler(CurrentPasswordInvalidError, current_password_invalid_handler)
 	app.add_exception_handler(LastAdminError, last_admin_handler)
+	app.add_exception_handler(IdempotencyKeyMismatchError, idempotency_key_mismatch_handler)
+	app.add_exception_handler(IdempotencyRequestInProgressError, idempotency_request_in_progress_handler)

@@ -130,6 +130,12 @@ class DeploySettings(BaseModel):
 	run_migrations: bool
 
 
+class IdempotencySettings(BaseModel):
+	enabled: bool
+	ttl_seconds: int = Field(gt=0)
+	max_key_length: int = Field(ge=1, le=512)
+
+
 class EnvSettings(BaseModel):
 	"""Runtime configuration. Values live in env profiles — no field defaults here."""
 
@@ -142,6 +148,7 @@ class EnvSettings(BaseModel):
 	compose: ComposeSettings
 	mcp: McpSettings
 	deploy: DeploySettings
+	idempotency: IdempotencySettings
 
 	@model_validator(mode="after")
 	def validate_production_urls(self) -> Self:

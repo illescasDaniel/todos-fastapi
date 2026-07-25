@@ -13,6 +13,7 @@ from todos_app.api.health.router import router as health_router
 from todos_app.api.todos.router import router as todos_router
 from todos_app.api.users.router import router as users_router
 from todos_app.core.exceptions import register_exception_handlers
+from todos_app.core.idempotency_middleware import idempotency_middleware
 from todos_app.core.logging import configure_logger
 from todos_app.core.rate_limiting import limiter
 from todos_app.core.settings import get_settings
@@ -43,6 +44,11 @@ async def limit_body_size(request: Request, call_next: Callable[[Request], Await
 			status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, content={"detail": "Request body too large"}
 		)
 	return await call_next(request)
+
+
+@app.middleware("http")
+async def idempotency(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+	return await idempotency_middleware(request, call_next)
 
 
 # L4: return generic 422 in non-local environments to avoid leaking schema details

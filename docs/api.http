@@ -12,6 +12,7 @@
 @seed_todo_id = 019e7000-0000-7000-8000-000000000003
 @seed_todo_last_id = 019e7000-0000-7000-8000-000000000004
 @unknown_id = 019e7000-0000-7000-8000-000000000099
+@idempotency_key = 019e7000-0000-7000-8000-0000000000aa
 
 ### ----------------------------------------
 ### Auth (/auth)
@@ -96,6 +97,20 @@ Content-Type: application/json
   "title": "Set up FastAPI project",
   "description": "Initialize app, routes, and database wiring.",
   "priority": "high",
+  "completed": false
+}
+
+### ToDos — create with Idempotency-Key (UUID v7; reuse same key+body on retry)
+# Generate a fresh UUID v7 per logical create; repeat this exact request on timeout.
+POST {{host}}/todos
+Authorization: Bearer {{jane_token}}
+Idempotency-Key: {{idempotency_key}}
+Content-Type: application/json
+
+{
+  "title": "Retry-safe todo",
+  "description": "Same key + body on retry returns cached 201 instead of a duplicate row.",
+  "priority": "medium",
   "completed": false
 }
 

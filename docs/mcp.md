@@ -16,6 +16,7 @@ Cursor agent  →  MCP tools (stdio)  →  httpx  →  FastAPI (MCP_API_BASE_URL
 - **API tools** mirror HTTP (`auth_login`, `todos_create`, …)
 - **Lifecycle tools** wrap scripts (`stack_compose_up`, `db_migrate`, …)
 - After `auth_login`, protected tools reuse Bearer token unless `access_token` passed
+- HTTP clients may send optional `Idempotency-Key` on mutating routes — use UUID v7 per logical operation, reuse on retry ([API — Idempotency](api.md#idempotency))
 
 Catalog: [`mcp/todos-backend/README.md`](../mcp/todos-backend/README.md).
 

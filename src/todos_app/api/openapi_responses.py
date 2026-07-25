@@ -11,6 +11,8 @@ from todos_app.core.error_responses import (
 )
 from todos_app.core.http_errors import (
 	FORBIDDEN,
+	IDEMPOTENCY_KEY_MISMATCH,
+	IDEMPOTENCY_REQUEST_IN_PROGRESS,
 	INVALID_CREDENTIALS,
 	INVALID_TOKEN,
 	TODO_NOT_FOUND_FOR_ACTOR,
@@ -84,6 +86,16 @@ class OpenAPIResponse(Enum):
 		),
 		DATABASE_CONFLICT_OPENAPI_EXAMPLE,
 	)
+	IDEMPOTENCY_KEY_MISMATCH = (
+		status.HTTP_422_UNPROCESSABLE_ENTITY,
+		"Idempotency-Key was already used with a different request body or target",
+		IDEMPOTENCY_KEY_MISMATCH,
+	)
+	IDEMPOTENCY_REQUEST_IN_PROGRESS = (
+		status.HTTP_409_CONFLICT,
+		"A request with this Idempotency-Key is already in progress",
+		IDEMPOTENCY_REQUEST_IN_PROGRESS,
+	)
 
 	status_code: int
 	description: str
@@ -116,7 +128,13 @@ class OpenAPIResponse(Enum):
 
 	@classmethod
 	def merge_write(cls, *members: OpenAPIResponse) -> OpenAPIResponses:
-		return cls.merge(cls.DATABASE_CONFLICT, cls.DATABASE_READ, *members)
+		return cls.merge(
+			cls.DATABASE_CONFLICT,
+			cls.DATABASE_READ,
+			cls.IDEMPOTENCY_KEY_MISMATCH,
+			cls.IDEMPOTENCY_REQUEST_IN_PROGRESS,
+			*members,
+		)
 
 	@classmethod
 	def merge_authenticated_read(cls, *members: OpenAPIResponse) -> OpenAPIResponses:
@@ -124,4 +142,12 @@ class OpenAPIResponse(Enum):
 
 	@classmethod
 	def merge_authenticated_write(cls, *members: OpenAPIResponse) -> OpenAPIResponses:
-		return cls.merge(cls.INVALID_TOKEN, cls.FORBIDDEN, cls.DATABASE_CONFLICT, cls.DATABASE_READ, *members)
+		return cls.merge(
+			cls.INVALID_TOKEN,
+			cls.FORBIDDEN,
+			cls.DATABASE_CONFLICT,
+			cls.DATABASE_READ,
+			cls.IDEMPOTENCY_KEY_MISMATCH,
+			cls.IDEMPOTENCY_REQUEST_IN_PROGRESS,
+			*members,
+		)
