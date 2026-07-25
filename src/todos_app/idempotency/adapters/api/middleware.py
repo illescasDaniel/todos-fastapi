@@ -17,8 +17,11 @@ from todos_app.idempotency.adapters.api.helpers import (
 	is_idempotent_path,
 	read_idempotency_key,
 )
-from todos_app.idempotency.application import idempotency as idempotency_use_cases
+from todos_app.idempotency.application.begin_idempotency import begin_idempotency
+from todos_app.idempotency.application.complete_idempotency import complete_idempotency
 from todos_app.idempotency.application.errors import IdempotencyKeyMismatchError, IdempotencyRequestInProgressError
+from todos_app.idempotency.application.models import IdempotencyReplay
+from todos_app.idempotency.application.release_idempotency import release_idempotency
 from todos_app.shared.http_errors import (
 	IDEMPOTENCY_KEY_INVALID,
 	IDEMPOTENCY_KEY_MISMATCH,
@@ -41,7 +44,7 @@ def _extract_bearer_user_id(request: Request) -> UUID | None:
 	return decoded.user_id
 
 
-def _replay_response(replay: idempotency_use_cases.IdempotencyReplay) -> Response:
+def _replay_response(replay: IdempotencyReplay) -> Response:
 	return Response(
 		content=replay.body,
 		status_code=replay.status_code,
@@ -114,7 +117,7 @@ async def idempotency_middleware(
 	store = create_idempotency_store(settings)
 
 	try:
-		begin = await idempotency_use_cases.begin_idempotency(
+		begin = await begin_idempotency(
 			store,
 			scope_key=scope_key,
 			fingerprint=fingerprint,
@@ -132,7 +135,7 @@ async def idempotency_middleware(
 		response = await call_next(request)
 		response_body, replayed_response = await _read_response_body(response)
 		content_type = response.media_type or response.headers.get("content-type") or "application/json"
-		await idempotency_use_cases.complete_idempotency(
+		await complete_idempotency(
 			store,
 			scope_key=scope_key,
 			fingerprint=fingerprint,
@@ -143,5 +146,5 @@ async def idempotency_middleware(
 		)
 		return replayed_response
 	except Exception:
-		await idempotency_use_cases.release_idempotency(store, scope_key=scope_key)
+		await release_idempotency(store, scope_key=scope_key)
 		raise
