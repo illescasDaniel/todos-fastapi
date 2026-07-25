@@ -5,6 +5,7 @@ from fakes.user_repository import FakeUserRepository
 from todos_app.application import auth as auth_use_cases
 from todos_app.application.errors import InvalidCredentialsError
 from todos_app.domain.users.entity import User
+from todos_app.infrastructure.persistence.users.user_lookup import UserRepositoryLookup
 
 
 pytestmark = pytest.mark.unit
@@ -24,25 +25,27 @@ class FakeAccessTokenIssuer:
 
 
 @pytest.fixture
-def repo() -> FakeUserRepository:
-	return FakeUserRepository(
-		[
-			User(
-				id=TEST_USER_ID,
-				email="jane@example.com",
-				username="jane",
-				first_name="Jane",
-				last_name="Doe",
-				hashed_password="hashed:changeme",
-				is_active=True,
-				role="user",
-			),
-		]
+def users() -> UserRepositoryLookup:
+	return UserRepositoryLookup(
+		FakeUserRepository(
+			[
+				User(
+					id=TEST_USER_ID,
+					email="jane@example.com",
+					username="jane",
+					first_name="Jane",
+					last_name="Doe",
+					hashed_password="hashed:changeme",
+					is_active=True,
+					role="user",
+				),
+			]
+		)
 	)
 
 
 async def test_given_valid_credentials_when_authenticating_then_returns_access_token(
-	repo: FakeUserRepository,
+	users: UserRepositoryLookup,
 ) -> None:
 	# given
 	hasher = FakePasswordHasher()
@@ -50,7 +53,7 @@ async def test_given_valid_credentials_when_authenticating_then_returns_access_t
 
 	# when
 	token = await auth_use_cases.authenticate(
-		repo=repo,
+		users=users,
 		hasher=hasher,
 		issuer=issuer,
 		username="jane",
@@ -62,7 +65,7 @@ async def test_given_valid_credentials_when_authenticating_then_returns_access_t
 
 
 async def test_given_unknown_username_when_authenticating_then_raises_invalid_credentials(
-	repo: FakeUserRepository,
+	users: UserRepositoryLookup,
 ) -> None:
 	# given
 	hasher = FakePasswordHasher()
@@ -71,7 +74,7 @@ async def test_given_unknown_username_when_authenticating_then_raises_invalid_cr
 	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
-			repo=repo,
+			users=users,
 			hasher=hasher,
 			issuer=issuer,
 			username="missing",
@@ -82,7 +85,7 @@ async def test_given_unknown_username_when_authenticating_then_raises_invalid_cr
 
 
 async def test_given_wrong_password_when_authenticating_then_raises_invalid_credentials(
-	repo: FakeUserRepository,
+	users: UserRepositoryLookup,
 ) -> None:
 	# given
 	hasher = FakePasswordHasher()
@@ -91,7 +94,7 @@ async def test_given_wrong_password_when_authenticating_then_raises_invalid_cred
 	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
-			repo=repo,
+			users=users,
 			hasher=hasher,
 			issuer=issuer,
 			username="jane",
@@ -113,14 +116,14 @@ async def test_given_inactive_user_when_authenticating_then_raises_invalid_crede
 		is_active=False,
 		role="user",
 	)
-	repo = FakeUserRepository([inactive])
+	users = UserRepositoryLookup(FakeUserRepository([inactive]))
 	hasher = FakePasswordHasher()
 	issuer = FakeAccessTokenIssuer()
 
 	# when
 	with pytest.raises(InvalidCredentialsError):
 		await auth_use_cases.authenticate(
-			repo=repo,
+			users=users,
 			hasher=hasher,
 			issuer=issuer,
 			username="jane",

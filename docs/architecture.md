@@ -77,7 +77,7 @@ class TodoRepository(Protocol):
     # ...
 ```
 
-**`owner_id` scope:** optional on todo port methods. Set (regular users) → SQL restricted to actor's rows. `None` (admins) → no owner predicate. Routes pass `list_owner_filter(actor_id, actor_role)` from `domain/auth/authorization.py` — repo does not read JWT/roles. Apply on **reads and writes** (`get_by_id`, `list_page`, `update`, `delete`).
+**`owner_id` scope:** optional on todo port methods. Set (regular users) → SQL restricted to actor's rows. `None` (admins) → no owner predicate. Use cases pass `list_owner_filter(actor_id, actor_role)` from `domain/todos/authorization.py` — repo does not read JWT/roles. Apply on **reads and writes** (`get_by_id`, `list_page`, `update`, `delete`).
 
 Adapters in infrastructure:
 
@@ -99,7 +99,7 @@ Routes/use cases depend on `TodoRepository`, not `SqlAlchemyTodoRepository`.
 
 | Piece | Role |
 |-------|------|
-| `application/auth.py` | Login: lookup, verify, token |
+| `application/auth.py` | Login via `UserLookup` port, verify, token |
 | `application/errors.py` | `UserNotFoundError`, `TodoNotFoundError`, etc. |
 | `application/users.py` | User CRUD |
 | `application/todos.py` | Actor-scoped todo get/update/delete |
@@ -303,9 +303,11 @@ Login over user persistence + hashing. Protected routes: `Authorization: Bearer`
 | API | `api/auth/` | `POST /auth/login` |
 | API | `api/todos/`, `api/users/` | `CurrentUserDep`; admin → `require_admin` |
 | Application | `auth.py`, `users.py`, `todos.py` | Orchestration |
-| Domain | `authenticated_user.py`, `authorization.py` | Actor identity, scope rules |
+| Domain | `authenticated_user.py`, `authorization.py` (`require_admin`) | Actor identity, admin gate |
+| Domain | `user_lookup.py` | Login credentials port (`UserCredentials`) |
+| Domain | `todos/authorization.py` | Todo owner-scope policy |
 | Domain | `password_hasher.py`, token issuer/verifier ports | Auth ports |
-| Infrastructure | `argon2_*`, `jwt_*` | Adapters |
+| Infrastructure | `argon2_*`, `jwt_*`, `UserRepositoryLookup` | Adapters |
 | Core | `auth.py`, `dependencies.py`, `settings.py` | Bearer, `get_current_user`, JWT config |
 
 **Protected endpoints**
@@ -346,8 +348,8 @@ src/
     │   ├── users.py
     │   └── todos.py
     ├── domain/
-    │   ├── auth/              # ports, AuthenticatedUser, authorization
-    │   ├── todos/             # entity, page, repository port
+    │   ├── auth/              # ports, AuthenticatedUser, require_admin, UserLookup
+    │   ├── todos/             # entity, page, repository port, owner-scope policy
     │   └── users/
     ├── infrastructure/
     │   ├── auth/

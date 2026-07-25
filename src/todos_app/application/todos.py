@@ -2,7 +2,7 @@ from collections.abc import Callable
 from uuid import UUID
 
 from todos_app.application.errors import TodoNotFoundError, TodoOwnerChangeForbiddenError
-from todos_app.domain.auth.authorization import (
+from todos_app.domain.todos.authorization import (
 	is_update_owner_change_forbidden,
 	list_owner_filter,
 	resolve_create_owner_id,
