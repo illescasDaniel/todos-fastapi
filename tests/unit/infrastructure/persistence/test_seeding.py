@@ -1,7 +1,7 @@
 import pytest
 
 from env_helpers import make_env_settings
-from todos_app.infrastructure.persistence.seeding.runner import assert_seed_allowed
+from todos_app.shared.adapters.persistence.seeding.runner import assert_seed_allowed
 
 
 pytestmark = pytest.mark.unit
@@ -22,10 +22,10 @@ def _patch_settings(
 	effective_db_url = database_url if normalized_env == "local" else _PROD_DB_URL
 	settings = make_env_settings(app_env=normalized_env, database_url=effective_db_url)  # pyright: ignore[reportArgumentType]
 	monkeypatch.setattr(
-		"todos_app.infrastructure.persistence.seeding.runner.get_settings",
+		"todos_app.shared.adapters.persistence.seeding.runner.get_settings",
 		lambda: settings,
 	)
-	monkeypatch.setattr("todos_app.core.settings.get_settings", lambda: settings)
+	monkeypatch.setattr("todos_app.shared.settings.get_settings", lambda: settings)
 
 
 @pytest.mark.parametrize("app_env", ["production", "staging", "Production", "STAGING"])

@@ -4,7 +4,7 @@ import os
 # Must be set before importing todos_app (profile loader runs at import time).
 os.environ["ENV_PROFILE"] = "test"
 
-from todos_app.core.config.loader import clear_env_settings_cache, get_env_settings
+from todos_app.shared.config.loader import clear_env_settings_cache, get_env_settings
 
 
 clear_env_settings_cache()
@@ -21,10 +21,10 @@ from sqlalchemy.pool import NullPool
 
 from fakes.fast_password_hasher import get_test_password_hasher
 from fakes.user_auth_cache import FakeUserAuthCache
-from todos_app.core.dependencies import get_password_hasher, get_user_auth_cache
-from todos_app.infrastructure.persistence.database import AsyncSessionLocal
-from todos_app.infrastructure.persistence.migrations import run_migrations_async
+from todos_app.auth.adapters.api.dependencies import get_password_hasher, get_user_auth_cache
 from todos_app.main import app
+from todos_app.shared.adapters.persistence.database import AsyncSessionLocal
+from todos_app.shared.adapters.persistence.migrations import run_migrations_async
 
 
 _TEST_PASSWORD_HASHER = get_test_password_hasher()

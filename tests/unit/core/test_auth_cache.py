@@ -5,11 +5,11 @@ from env_helpers import make_env_settings
 from factories import TEST_USER_ID
 from fakes.user_auth_cache import FakeUserAuthCache
 from fakes.user_repository import FakeUserRepository
-from todos_app.core.auth import get_current_user
-from todos_app.core.settings import Settings
-from todos_app.domain.users.entity import User
-from todos_app.infrastructure.auth.jwt_access_token_issuer import JwtAccessTokenIssuer
-from todos_app.infrastructure.auth.jwt_access_token_verifier import JwtAccessTokenVerifier
+from todos_app.auth.adapters.api.current_user import get_current_user
+from todos_app.auth.adapters.security.jwt_access_token_issuer import JwtAccessTokenIssuer
+from todos_app.auth.adapters.security.jwt_access_token_verifier import JwtAccessTokenVerifier
+from todos_app.shared.settings import Settings
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.unit

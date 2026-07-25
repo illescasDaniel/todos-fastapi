@@ -43,7 +43,7 @@ Custom output path:
 Serialization mode (output shapes instead of input validation):
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m todos_app.api.schema_export.export schemas/json --mode serialization
+PYTHONPATH=src .venv/bin/python -m todos_app.shared.adapters.api.schema_export.export schemas/json --mode serialization
 ```
 
 Re-run the export after changing any `api/*/schemas.py` model and commit the updated files under `schemas/json/` if you vendor them for clients.

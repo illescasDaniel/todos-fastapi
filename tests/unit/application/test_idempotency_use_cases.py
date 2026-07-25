@@ -1,9 +1,9 @@
 import pytest
 
 from fakes.idempotency_store import FakeIdempotencyStore
-from todos_app.application import idempotency as idempotency_use_cases
-from todos_app.application.errors import IdempotencyKeyMismatchError, IdempotencyRequestInProgressError
-from todos_app.domain.idempotency.record import IdempotencyRecord
+from todos_app.idempotency.application import idempotency as idempotency_use_cases
+from todos_app.idempotency.application.errors import IdempotencyKeyMismatchError, IdempotencyRequestInProgressError
+from todos_app.idempotency.domain.record import IdempotencyRecord
 
 
 pytestmark = pytest.mark.unit

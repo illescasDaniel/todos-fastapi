@@ -20,7 +20,7 @@ fi
 python -c "
 import os, sys
 sys.path.insert(0, os.environ.get('PYTHONPATH', 'src'))
-from todos_app.core.settings import get_settings
+from todos_app.shared.settings import get_settings
 get_settings()
 print('Settings validation passed', flush=True)
 " || exit 1

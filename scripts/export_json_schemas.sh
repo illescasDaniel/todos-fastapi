@@ -11,4 +11,4 @@ if [[ ! -d "${repo_root}/.venv" ]]; then
 	exit 1
 fi
 
-PYTHONPATH="${repo_root}/src" "${repo_root}/.venv/bin/python" -m todos_app.api.schema_export.export "${output_dir}"
+PYTHONPATH="${repo_root}/src" "${repo_root}/.venv/bin/python" -m todos_app.shared.adapters.api.schema_export.export "${output_dir}"

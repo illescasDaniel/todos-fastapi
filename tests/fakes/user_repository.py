@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from todos_app.domain.ids import new_id
-from todos_app.domain.users.entity import User
+from todos_app.shared.ids import new_id
+from todos_app.users.domain.entity import User
 
 
 class FakeUserRepository:

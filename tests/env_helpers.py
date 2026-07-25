@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from todos_app.core.config.loader import apply_dotted_overrides
-from todos_app.core.config.schema import (
+from todos_app.shared.config.loader import apply_dotted_overrides
+from todos_app.shared.config.schema import (
 	ApiSettings,
 	Argon2Settings,
 	ComposeSettings,

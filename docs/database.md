@@ -35,7 +35,7 @@ Revisions in `alembic/versions/`; `alembic/env.py` reads `postgres.url`, runs as
 
 **Schema change loop:**
 
-1. Edit `src/todos_app/infrastructure/persistence/<feature>/orm.py`
+1. Edit `src/todos_app/<feature>/adapters/database/orm.py`
 2. `./scripts/database/migrate.sh revision -m "…"`
 3. Review `alembic/versions/` (always inspect autogenerate)
 4. `./scripts/database/migrate.sh`
@@ -58,7 +58,7 @@ Resets DB, migrates, inserts bundled SQL.
 1. `local.toml` + `export ENV_PROFILE=local` (Podman for bundled Postgres)
 2. `./scripts/database/seed.sh`
 
-Order: `default_users.sql`, `default_todos.sql` under `src/todos_app/infrastructure/persistence/seeding/`.
+Order: `default_users.sql`, `default_todos.sql` under `src/todos_app/shared/adapters/persistence/seeding/`.
 
 Use seed for demo data; [wipe](#wiping-the-database) for empty DB.
 

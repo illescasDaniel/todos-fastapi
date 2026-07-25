@@ -1,10 +1,10 @@
 import pytest
 
-from todos_app.domain.idempotency.record import IdempotencyRecord
-from todos_app.infrastructure.cache.idempotency_codec import (
+from todos_app.idempotency.adapters.cache.idempotency_codec import (
 	deserialize_idempotency_record,
 	serialize_idempotency_record,
 )
+from todos_app.idempotency.domain.record import IdempotencyRecord
 
 
 pytestmark = pytest.mark.unit

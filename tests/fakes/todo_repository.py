@@ -1,8 +1,8 @@
 from uuid import UUID
 
-from todos_app.domain.ids import new_id
-from todos_app.domain.todos.entity import Todo
-from todos_app.domain.todos.page import TodoPage
+from todos_app.shared.ids import new_id
+from todos_app.todos.domain.entity import Todo
+from todos_app.todos.domain.page import TodoPage
 
 
 class FakeTodoRepository:

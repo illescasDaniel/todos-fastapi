@@ -2,10 +2,10 @@ import pytest
 
 from factories import TEST_USER_ID
 from fakes.user_repository import FakeUserRepository
-from todos_app.application import auth as auth_use_cases
-from todos_app.application.errors import InvalidCredentialsError
-from todos_app.domain.users.entity import User
-from todos_app.infrastructure.persistence.users.user_lookup import UserRepositoryLookup
+from todos_app.auth.application import auth as auth_use_cases
+from todos_app.auth.application.errors import InvalidCredentialsError
+from todos_app.users.adapters.database.user_lookup import UserRepositoryLookup
+from todos_app.users.domain.entity import User
 
 
 pytestmark = pytest.mark.unit

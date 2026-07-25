@@ -1,6 +1,6 @@
 import pytest
 
-from todos_app.core.config.merge import deep_merge
+from todos_app.shared.config.merge import deep_merge
 
 
 pytestmark = pytest.mark.unit

@@ -3,11 +3,11 @@ from contextlib import contextmanager
 
 from slowapi.wrappers import Limit, LimitGroup
 
-from todos_app.core.rate_limiting import limiter
+from todos_app.shared.rate_limiting import limiter
 
 
-LOGIN_ROUTE_KEY = "todos_app.api.auth.router.login"
-CREATE_USER_ROUTE_KEY = "todos_app.api.users.router.create_user"
+LOGIN_ROUTE_KEY = "todos_app.auth.adapters.api.router.login"
+CREATE_USER_ROUTE_KEY = "todos_app.users.adapters.api.router.create_user"
 
 
 def _limits_for(limit_value: str) -> list[Limit]:

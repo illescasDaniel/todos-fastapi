@@ -6,8 +6,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from todos_app.core.settings import get_settings
-from todos_app.infrastructure.persistence.database import Base, import_all_orm_models, require_async_db_driver
+from todos_app.shared.settings import get_settings
+from todos_app.shared.adapters.persistence.database import Base, import_all_orm_models, require_async_db_driver
 
 
 config = context.config

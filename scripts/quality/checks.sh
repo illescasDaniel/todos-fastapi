@@ -36,9 +36,9 @@ if [[ "${CI:-}" == "true" && "${FIX}" == true ]]; then
 	FIX=false
 fi
 
-GATE_PLANNED_STEPS=6
+GATE_PLANNED_STEPS=7
 if [[ "${FULL}" == true ]]; then
-	GATE_PLANNED_STEPS=7
+	GATE_PLANNED_STEPS=8
 fi
 
 gate_init
@@ -173,7 +173,20 @@ else
 	fi
 fi
 
-# --- 5. mcp tests ---
+# --- 5. import-linter ---
+gate_step_start "import-linter"
+import_lint_output="$("${LIB_REPO_ROOT}/.venv/bin/lint-imports" 2>&1)"
+import_lint_exit=$?
+printf '%s\n' "${import_lint_output}"
+if [[ "${import_lint_exit}" -eq 0 ]]; then
+	gate_record_pass
+else
+	gate_gha_error "" "" "" "import-linter" "import contracts failed (exit ${import_lint_exit})"
+	gate_record_fail 1 0
+	gate_add_detail "[import-linter] exit ${import_lint_exit}"
+fi
+
+# --- 6. mcp tests ---
 gate_step_start "mcp tests"
 mcp_output="$("${internal_dir}/mcp_tests.sh" "${forwarded_args[@]}" 2>&1)"
 mcp_exit=$?
@@ -195,7 +208,7 @@ else
 	gate_record_fail 1 0
 fi
 
-# --- 6. pytest ---
+# --- 7. pytest ---
 gate_step_start "pytest"
 pytest_output="$(env ENV_PROFILE=test "${quality_dir}/tests.sh" --coverage 2>&1)"
 pytest_exit=$?
@@ -217,7 +230,7 @@ else
 	gate_record_fail 1 0
 fi
 
-# --- 7. verify_stack (optional) ---
+# --- 8. verify_stack (optional) ---
 if [[ "${FULL}" == true ]]; then
 	gate_step_start "verify_stack"
 	verify_profile="${ENV_PROFILE:-local}"

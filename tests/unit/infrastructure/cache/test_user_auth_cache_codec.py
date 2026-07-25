@@ -1,12 +1,12 @@
 import pytest
 
 from factories import TEST_USER_ID
-from todos_app.domain.auth.authenticated_user import AuthenticatedUser
-from todos_app.infrastructure.cache.user_auth_cache_codec import (
+from todos_app.auth.adapters.cache.user_auth_cache_codec import (
 	auth_user_cache_key,
 	deserialize_authenticated_user,
 	serialize_authenticated_user,
 )
+from todos_app.auth.domain.authenticated_user import AuthenticatedUser
 
 
 pytestmark = pytest.mark.unit

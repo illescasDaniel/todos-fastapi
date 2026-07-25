@@ -21,7 +21,7 @@ Secret overlays are **gitignored**; committed: `example.toml`, `production.examp
 
 Copy [`example.toml`](../config/profiles/example.toml) → gitignored `local.toml` (or `local2.toml` for a second stack). Set ports, URLs, secrets. Use `app_env = "local"` for OpenAPI UI and seed guards.
 
-Shell scripts and Compose share a generated root [`.env`](../.env) from `python -m todos_app.core.config.export` (via [`load_env.sh`](../scripts/internal/load_env.sh)) — gitignored, do not hand-edit.
+Shell scripts and Compose share a generated root [`.env`](../.env) from `python -m todos_app.shared.config.export` (via [`load_env.sh`](../scripts/internal/load_env.sh)) — gitignored, do not hand-edit.
 
 Production (Path C): gitignored [`production.toml`](../config/profiles/production.toml) from [`production.example.toml`](../config/profiles/production.example.toml). `export ENV_PROFILE=production` before `./scripts/container/deploy.sh`.
 

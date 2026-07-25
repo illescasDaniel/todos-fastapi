@@ -15,5 +15,5 @@ database_clear_settings_cache() {
 	fi
 	# shellcheck disable=SC1091
 	source ".venv/bin/activate"
-	PYTHONPATH=src python -c "from todos_app.core.config.loader import clear_env_settings_cache; clear_env_settings_cache()"
+	PYTHONPATH=src python -c "from todos_app.shared.config.loader import clear_env_settings_cache; clear_env_settings_cache()"
 }

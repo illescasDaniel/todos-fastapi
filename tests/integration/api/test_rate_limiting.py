@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from factories import user_signup_payload
 from integration.api.rate_limit_helpers import CREATE_USER_ROUTE_KEY, LOGIN_ROUTE_KEY, lowered_route_rate_limit
-from todos_app.core.rate_limiting import limiter
+from todos_app.shared.rate_limiting import limiter
 
 
 pytestmark = pytest.mark.integration

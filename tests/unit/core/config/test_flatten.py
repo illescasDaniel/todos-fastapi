@@ -1,7 +1,7 @@
 import pytest
 
 from env_helpers import make_env_settings
-from todos_app.core.config.flatten import field_path_to_env_name, iter_env_pairs
+from todos_app.shared.config.flatten import field_path_to_env_name, iter_env_pairs
 
 
 pytestmark = pytest.mark.unit

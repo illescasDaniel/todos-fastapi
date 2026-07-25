@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from todos_app.core.config.loader import clear_env_settings_cache, get_env_settings
+from todos_app.shared.config.loader import clear_env_settings_cache, get_env_settings
 
 
 pytestmark = pytest.mark.unit

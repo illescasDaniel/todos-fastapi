@@ -37,5 +37,5 @@ if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
 fi
 container_ops_assert_seed_allowed
 echo "Seeding database..."
-container_ops_run_app python -m todos_app.infrastructure.persistence.seeding
+container_ops_run_app python -m todos_app.shared.adapters.persistence.seeding
 echo "Seed complete. Demo users: jane / admin (password: changeme)."
