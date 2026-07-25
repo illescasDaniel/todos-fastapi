@@ -52,6 +52,7 @@ Pattern: **factory/guard** lazy-loads; **adapter** types client via `TYPE_CHECKI
 
 ```bash
 ./scripts/quality/checks.sh
+# or: task check
 ```
 
 All steps run; summary at end; exit 1 on errors. Steps: audit → Ruff → pyright → MCP tests → pytest+coverage. `--fix` for Ruff autofix; `--full` adds stack verify (local, implies `--fix`).
@@ -59,6 +60,7 @@ All steps run; summary at end; exit 1 on errors. Steps: audit → Ruff → pyrig
 ```bash
 ./scripts/quality/checks.sh --fix
 ./scripts/quality/checks.sh --full
+# or: task check_fix / task check_full
 ```
 
 Individual:
@@ -67,9 +69,10 @@ Individual:
 ./scripts/quality/ruff.sh
 ./scripts/quality/pyright.sh
 ./scripts/quality/tests.sh --coverage
+# or: task ruff / task pyright / task test_cov
 ```
 
-MCP tests + audit: gate only (`checks.sh`).
+MCP tests + audit: gate only (`checks.sh`). Task aliases: `task --list` (see [Getting started](getting-started.md#task-runner)).
 
 ## Tests
 

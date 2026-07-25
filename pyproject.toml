@@ -34,6 +34,7 @@ dev = [
 	"pytest-asyncio>=0.24",
 	"pytest-cov>=6.0",
 	"ruff",
+	"taskipy>=1.14",
 ]
 
 [project.urls]
@@ -193,3 +194,29 @@ forbidden_modules = [
 	"todos_app.idempotency.application",
 	"todos_app.runtime",
 ]
+
+# --- Task runner (taskipy) ---
+[tool.taskipy.tasks]
+check = { cmd = "./scripts/quality/checks.sh", help = "quality gate (check-only)" }
+check_fix = { cmd = "./scripts/quality/checks.sh --fix", help = "quality gate with Ruff autofix" }
+check_full = { cmd = "./scripts/quality/checks.sh --full", help = "quality gate + stack verify (local)" }
+ruff = { cmd = "./scripts/quality/ruff.sh", help = "Ruff lint and format" }
+pyright = { cmd = "./scripts/quality/pyright.sh", help = "basedpyright type check" }
+test = { cmd = "./scripts/quality/tests.sh", help = "pytest (pass args after --)" }
+test_cov = { cmd = "./scripts/quality/tests.sh --coverage", help = "pytest with coverage" }
+shellcheck = { cmd = "./scripts/quality/shellcheck.sh", help = "ShellCheck on scripts" }
+migrate = { cmd = "./scripts/database/migrate.sh", help = "Alembic migrate (pass args after --)" }
+seed = { cmd = "./scripts/database/seed.sh", help = "seed demo data" }
+wipe = { cmd = "./scripts/database/wipe.sh", help = "wipe local DB volumes" }
+start = { cmd = "./scripts/start.sh", help = "start host API (Path A)" }
+path_a = { cmd = "./scripts/dev/bring_up.sh a", help = "Path A reuse: stop Path B, start host API" }
+path_a_clean = { cmd = "./scripts/dev/bring_up.sh a --clean", help = "Path A clean: wipe, build, seed, start" }
+up = { cmd = "./scripts/container/up.sh", help = "compose up (Path B)" }
+path_b = { cmd = "./scripts/dev/bring_up.sh b", help = "Path B reuse: compose up" }
+path_b_clean = { cmd = "./scripts/dev/bring_up.sh b --clean", help = "Path B clean: wipe, up, seed" }
+down = { cmd = "./scripts/container/down.sh", help = "compose down" }
+logs = { cmd = "./scripts/container/logs.sh", help = "compose logs" }
+verify = { cmd = "./scripts/verify/verify_stack.sh", help = "stack verification" }
+export_schemas = { cmd = "./scripts/export_json_schemas.sh", help = "export JSON schemas" }
+export_openapi = { cmd = "./scripts/mcp/export_openapi.sh", help = "export OpenAPI snapshot" }
+reinstall = { cmd = "./scripts/reinstall.sh", help = "reinstall package (pass 'dev' after --)" }

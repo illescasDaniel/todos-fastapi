@@ -45,6 +45,27 @@ chmod +x scripts/reinstall.sh   # once
 ./scripts/reinstall.sh dev      # pip install -e ".[dev]"
 ```
 
+### Task runner
+
+After `pip install -e ".[dev]"`, [taskipy](https://github.com/taskipy/taskipy) exposes named tasks that wrap `./scripts/*`:
+
+```bash
+task --list
+task check_fix    # quality gate + Ruff autofix
+task check         # confirm gate
+task path_a        # Path A reuse (infra + host API)
+task path_a_clean  # Path A wipe → build → seed → start
+task path_b        # Path B reuse (compose up)
+task path_b_clean  # Path B wipe → up → seed
+task migrate
+task seed
+task start         # low-level Path A start only
+```
+
+**Clean** vs **reuse:** clean runs `wipe --yes`, rebuilds the app image (Path A) or `up --build` (Path B), seeds demo users, then brings the path up. Reuse keeps volumes/data and only starts the path (`path_a` stops Path B containers first so the API port is free).
+
+Pass extra args after `--` (e.g. `task test -- -m unit`, `task migrate -- revision -m "describe change"`). Scripts remain the source of truth; see [Development](development.md).
+
 Runtime deps:
 
 | Package | Role |

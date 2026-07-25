@@ -21,7 +21,7 @@ FastAPI generates a full **OpenAPI 3** spec from the route definitions and Pydan
 For **mobile apps, SPAs, and other clients** that only need request/response shapes (not HTTP metadata), export standalone **JSON Schema** files:
 
 ```bash
-./scripts/export_json_schemas.sh    # writes schemas/json/
+task export_schemas    # writes schemas/json/
 ```
 
 See [JSON Schema export](docs/json-schemas.md) for the model list, bundle format, and codegen examples. Route tables and live doc URLs: [docs/api.md](docs/api.md).
@@ -63,18 +63,17 @@ From the project root (see [Getting started](docs/getting-started.md) for full d
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"          # includes taskipy — use `task --list`
 cp config/profiles/example.toml config/profiles/local.toml
 # edit secrets in local.toml (JWT, POSTGRES_PASSWORD, VALKEY_PASSWORD, URLs)
 export ENV_PROFILE=local
-./scripts/database/migrate.sh     # ensure infra, apply Alembic migrations
-./scripts/database/seed.sh        # optional — demo users jane/admin, password changeme
-./scripts/start.sh       # host API with hot reload
+task path_a_clean   # wipe → build app image → seed → host API
+# or: task path_a   # reuse volumes; stop Path B if needed, then host API
 ```
 
-Host env profile uses `127.0.0.1` for PostgreSQL and Valkey. Scripts generate a gitignored root `.env` for Compose from the profile. `./scripts/database/wipe.sh` removes containers and volumes for a full reset; `./scripts/database/migrate.sh` and `./scripts/database/seed.sh` work the same for host-app and full-stack paths.
+Host env profile uses `127.0.0.1` for PostgreSQL and Valkey. Scripts generate a gitignored root `.env` for Compose from the profile. Low-level tasks: `task wipe`, `task migrate`, `task seed`, `task start`.
 
-> **OpenAPI UI** — after `./scripts/start.sh`, open `http://127.0.0.1:8000/docs` (or your `api.port` in `config/profiles/local.toml`). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
+> **OpenAPI UI** — after Path A is up, open `http://127.0.0.1:8000/docs` (or your `api.port` in `config/profiles/local.toml`). Local only (`APP_ENV=local`); staging and production hide `/docs`, `/redoc`, and `/openapi.json`. Route tables: [docs/api.md](docs/api.md).
 
 ### Cursor MCP (agent tools)
 
@@ -82,7 +81,7 @@ A separate MCP server under `[mcp/todos-backend/](mcp/todos-backend/)` lets Curs
 
 1. Install the MCP venv: `cd mcp/todos-backend && python3.14 -m venv .venv && source .venv/bin/activate && pip install -e .`
 2. Open the **repo root** in Cursor, enable **todos-backend** in the **Agents** view (config: `[.cursor/mcp.json](.cursor/mcp.json)`).
-3. Start the API (`./scripts/start.sh`), then try `health_check` and `auth_login` in Agent chat.
+3. Start the API (`task start`), then try `health_check` and `auth_login` in Agent chat.
 
 The MCP uses its **own** `.venv` in `mcp/todos-backend/` (not global Python, not the API venv). See [docs/mcp.md](docs/mcp.md).
 
@@ -94,26 +93,26 @@ Same infra plus an app container via `[docker-compose.app.base.yml](docker-compo
 cp config/profiles/example.toml config/profiles/local.toml
 # edit secrets in local.toml (JWT, POSTGRES_PASSWORD, VALKEY_PASSWORD, URLs)
 export ENV_PROFILE=local
-./scripts/container/up.sh
-./scripts/database/seed.sh        # optional — demo data
+task path_b_clean   # wipe → up --build → seed
+# or: task path_b   # reuse volumes; compose up --build
 ```
 
 Path B rewrites loopback `POSTGRES_URL` and `VALKEY_URL` to in-network service names inside the container. Host `.env` uses `127.0.0.1`.
 
-Local scripts: `up.sh`, `down.sh`, `logs.sh`, `build.sh`. Production deploy (Path C): copy [`production.example.toml`](config/profiles/production.example.toml) to `config/profiles/production.toml`, set `ENV_PROFILE=production` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
+Local tasks: `task path_b` / `task path_b_clean`, plus low-level `task up`, `task down`, `task logs` (build still `./scripts/container/build.sh`). Production deploy (Path C): copy [`production.example.toml`](config/profiles/production.example.toml) to `config/profiles/production.toml`, set `ENV_PROFILE=production` — see [Deployment](docs/deployment.md#path-c--app-only-compose-primary).
 
 ## Quality checks (CI)
 
 The CI badge runs `[.github/workflows/ci.yml](.github/workflows/ci.yml)` on every push and pull request to `main`. The **test** job is the same gate you run locally:
 
 ```bash
-./scripts/quality/checks.sh          # check-only (matches CI)
-./scripts/quality/checks.sh --fix    # Ruff autofix/format, then gate
+task check          # check-only (matches CI)
+task check_fix     # Ruff autofix/format, then gate
 ```
 
-Steps: dependency audit → Ruff → ShellCheck + shfmt (`shellcheck.sh`) → basedpyright → MCP tests → pytest with coverage (90% line gate on `todos_app`). After substantive changes, run `--fix` once, then `checks.sh` again to confirm clean. `--fix` also runs Ruff and shfmt on shell scripts. Optional `./scripts/quality/checks.sh --full` adds local stack verification (not in CI).
+Steps: dependency audit → Ruff → ShellCheck + shfmt (`shellcheck.sh`) → basedpyright → MCP tests → pytest with coverage (90% line gate on `todos_app`). After substantive changes, run `task check_fix` once, then `task check` again to confirm clean. `--fix` also runs Ruff and shfmt on shell scripts. Optional `task check_full` adds local stack verification (not in CI).
 
-Individual steps (`ruff.sh`, `shellcheck.sh`, `pyright.sh`, `tests.sh`) and stack verification are documented in [Development](docs/development.md). CI installs ShellCheck and shfmt before the gate; a separate job scans the base Python image with Trivy (CVE gate — not part of `checks.sh`).
+Individual steps (`task ruff`, `task shellcheck`, `task pyright`, `task test`) and stack verification (`task verify`) are documented in [Development](docs/development.md). See `task --list` for the full catalog. CI installs ShellCheck and shfmt before the gate; a separate job scans the base Python image with Trivy (CVE gate — not part of `checks.sh`).
 
 ## Documentation
 
