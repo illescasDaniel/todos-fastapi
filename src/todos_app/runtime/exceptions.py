@@ -135,7 +135,7 @@ async def last_admin_handler(request: Request, exc: Exception) -> Response:
 
 async def idempotency_key_mismatch_handler(request: Request, exc: Exception) -> Response:
 	assert isinstance(exc, IdempotencyKeyMismatchError)
-	http_exc = HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=IDEMPOTENCY_KEY_MISMATCH)
+	http_exc = HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=IDEMPOTENCY_KEY_MISMATCH)
 	return await http_exception_handler(request, http_exc)
 
 

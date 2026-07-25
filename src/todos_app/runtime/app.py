@@ -59,7 +59,7 @@ def create_app() -> FastAPI:
 
 			return await request_validation_exception_handler(request, exc)  # pyright: ignore[reportReturnType]
 		return JSONResponse(
-			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+			status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
 			content={"detail": "Invalid request"},
 		)
 

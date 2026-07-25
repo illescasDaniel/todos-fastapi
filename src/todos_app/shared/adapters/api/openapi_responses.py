@@ -87,7 +87,7 @@ class OpenAPIResponse(Enum):
 		DATABASE_CONFLICT_OPENAPI_EXAMPLE,
 	)
 	IDEMPOTENCY_KEY_MISMATCH = (
-		status.HTTP_422_UNPROCESSABLE_ENTITY,
+		status.HTTP_422_UNPROCESSABLE_CONTENT,
 		"Idempotency-Key was already used with a different request body or target",
 		IDEMPOTENCY_KEY_MISMATCH,
 	)

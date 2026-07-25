@@ -100,7 +100,7 @@ async def idempotency_middleware(
 	)
 	if idempotency_key is None:
 		if request.headers.get("idempotency-key") is not None or request.headers.get("Idempotency-Key") is not None:
-			return _error_response(status.HTTP_422_UNPROCESSABLE_ENTITY, IDEMPOTENCY_KEY_INVALID)
+			return _error_response(status.HTTP_422_UNPROCESSABLE_CONTENT, IDEMPOTENCY_KEY_INVALID)
 		return await call_next(request)
 
 	body = await request.body()
@@ -124,7 +124,7 @@ async def idempotency_middleware(
 			ttl_seconds=settings.idempotency.ttl_seconds,
 		)
 	except IdempotencyKeyMismatchError:
-		return _error_response(status.HTTP_422_UNPROCESSABLE_ENTITY, IDEMPOTENCY_KEY_MISMATCH)
+		return _error_response(status.HTTP_422_UNPROCESSABLE_CONTENT, IDEMPOTENCY_KEY_MISMATCH)
 	except IdempotencyRequestInProgressError:
 		return _error_response(status.HTTP_409_CONFLICT, IDEMPOTENCY_REQUEST_IN_PROGRESS)
 
